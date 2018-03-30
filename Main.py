@@ -14,16 +14,19 @@ def union(*args):
         for input_file_path in [args[0], args[1]]:
             file_name = os.path.basename(input_file_path)
             with open(input_file_path, "r") as input_file:
-                for row in input_file:
-                    output_file.write("{0}:{1}\n".format(row.strip(), file_name))
+                for line in input_file:
+                    output_file.write("{0}:{1}\n".format(line.strip(), file_name))
 
 
 def separate(*args):
     args = args[0]  # Extract arguments list from *args tuple
     input_validation(args, is_union=False)
-    input_file_path = args[0]
-    output_file_path_1 = args[1]
-    output_file_path_2 = args[2]
+    with open(args[1], "w") as output_file_1:
+        with open(args[2], "w") as output_file_2:
+            with open(args[0], "r") as input_file:
+                for line in input_file:
+                    split_line = re.split(delimiters, line)
+                    # TODO: write to output_file_1 or output_file_2 based on last column
 
 
 def distinct(*args):
