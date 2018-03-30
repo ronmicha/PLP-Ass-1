@@ -1,23 +1,40 @@
-import argparse
+import sys
 
 
-def union(args):
-    print "union!"
+def union(*args):
+    input_file_path_1 = args[0]
+    input_file_path_2 = args[1]
+    output_file_path = args[2]
 
 
-def separate(args):
-    print "separate!"
+def separate(*args):
+    input_file_path = args[0]
+    output_file_path_1 = args[1]
+    output_file_path_2 = args[2]
+
+
+def distinct(*args):
+    input_file_path = args[0]
+    column_index = args[1]
+    output_file_path = args[2]
+
+
+def like(*args):
+    input_file_path = args[0]
+    column_index = args[1]
+    regex = args[2]
 
 
 if __name__ == "__main__":
-    arg_parser = argparse.ArgumentParser()
-    sub_parsers = arg_parser.add_subparsers()
-
-    union_parser = sub_parsers.add_parser('UNION')
-    union_parser.set_defaults(func=union)
-
-    separate_parser = sub_parsers.add_parser('SEPARATE')
-    separate_parser.set_defaults(func=separate)
-
-    args = arg_parser.parse_args()
-    args.func(args)
+    functions_dict = \
+        {
+            "UNION": union,
+            "SEPARATE": separate,
+            "DISTINCT": distinct,
+            "LIKE": like
+        }
+    try:
+        action = sys.argv[1]
+        functions_dict[action](sys.argv[2:])
+    except Exception as ex:
+        print ex.message
