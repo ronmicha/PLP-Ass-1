@@ -48,16 +48,13 @@ def input_validation(args, is_union):
     if not os.path.isfile(args[0]) or (is_union and not os.path.isfile(args[1])):
         raise Exception("Input arguments don't exist")
 
-    arg_1_extension = os.path.splitext(args[0])[1]
-    arg_2_extension = os.path.splitext(args[1])[1]
-    arg_3_extension = os.path.splitext(args[2])[1]
+    args_extensions = [os.path.splitext(arg)[1] for arg in args]
 
-    if arg_1_extension not in (".txt", ".csv") or \
-            arg_2_extension not in (".txt", ".csv") or \
-            arg_3_extension not in (".txt", ".csv"):
-        raise Exception("All arguments must be txt or csv files")
+    for arg_extension in args_extensions:
+        if arg_extension not in (".txt", ".csv"):
+            raise Exception("All arguments must be txt or csv files")
 
-    if arg_1_extension != arg_2_extension != arg_3_extension:
+    if args_extensions.count(args_extensions[0]) != len(args_extensions):
         raise Exception("All arguments must be of same type")
 
 
@@ -74,7 +71,7 @@ def tables_structure_validation(file_1_path, file_2_path):
         raise Exception(error_message)
 
     for i in range(len(file_1_structure.fields)):
-        # Extract dtype name of column i and remove digits from it (so that 'string6144' == 'string8325')
+        # Extract dtype name of column i and remove digits from it (so that 'int64' == 'int32')
         file_1_col_i_type = file_1_structure.fields.values()[i][0].name.translate(None, digits)
         file_2_col_i_type = file_2_structure.fields.values()[i][0].name.translate(None, digits)
         if file_1_col_i_type != file_2_col_i_type:
