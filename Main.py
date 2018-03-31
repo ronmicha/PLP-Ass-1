@@ -2,8 +2,6 @@ import os
 import sys
 import re
 
-# https://penandpants.com/2012/03/09/reading-text-tables-with-python/
-
 delimiters = r":|::"
 
 
@@ -55,8 +53,8 @@ def input_validation(args, is_union):
     arg_3_extension = os.path.splitext(args[2])[1]
 
     if arg_1_extension not in (".txt", ".csv") or \
-                    arg_2_extension not in (".txt", ".csv") or \
-                    arg_3_extension not in (".txt", ".csv"):
+            arg_2_extension not in (".txt", ".csv") or \
+            arg_3_extension not in (".txt", ".csv"):
         raise Exception("All arguments must be txt or csv files")
 
     if arg_1_extension != arg_2_extension != arg_3_extension:
@@ -66,6 +64,7 @@ def input_validation(args, is_union):
 def tables_structure_validation(file_1_path, file_2_path):
     import numpy as np
     from string import digits
+    # https://penandpants.com/2012/03/09/reading-text-tables-with-python/
 
     file_1_structure = np.genfromtxt(file_1_path, delimiter=':', dtype=None).dtype  # TODO: delimiters?
     file_2_structure = np.genfromtxt(file_2_path, delimiter=':', dtype=None).dtype
