@@ -2,7 +2,7 @@ import os
 import sys
 import re
 
-delimiters = r":|::"
+delimiter = r"::"
 
 
 def union(*args):
@@ -15,7 +15,7 @@ def union(*args):
             with open(input_file_path, "r") as input_file:
                 for line in input_file:
                     line = line.strip()
-                    output_file.write("{0}:{1}\n".format(line, file_name))
+                    output_file.write("{0}{1}{2}\n".format(line, delimiter, file_name))
 
 
 def separate(*args):
@@ -25,7 +25,7 @@ def separate(*args):
         with open(args[2], "w") as output_file_2:
             with open(args[0], "r") as input_file:
                 for line in input_file:
-                    split_line = re.split(delimiters, line)
+                    split_line = re.split(delimiter, line)
                     # TODO: write to output_file_1 or output_file_2 based on last column
 
 
@@ -63,8 +63,8 @@ def tables_structure_validation(file_1_path, file_2_path):
     from string import digits
     # https://penandpants.com/2012/03/09/reading-text-tables-with-python/
 
-    file_1_structure = np.genfromtxt(file_1_path, delimiter=':', dtype=None).dtype  # TODO: delimiters?
-    file_2_structure = np.genfromtxt(file_2_path, delimiter=':', dtype=None).dtype
+    file_1_structure = np.genfromtxt(file_1_path, delimiter=delimiter, dtype=None).dtype
+    file_2_structure = np.genfromtxt(file_2_path, delimiter=delimiter, dtype=None).dtype
     error_message = "The tables' format does not match"
 
     if len(file_1_structure) != len(file_2_structure):
