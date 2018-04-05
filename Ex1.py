@@ -1,6 +1,7 @@
 import os
 import sys
 import re
+import ast
 
 delimiter = r"::"
 
@@ -41,9 +42,27 @@ def separate(*args):
 
 
 def distinct(*args):
+    args = args[0]
+    validate_input_distinct(args)
     input_file_path = args[0]
-    column_index = args[1]
+    column_index = int(args[1])
     output_file_path = args[2]
+    result_set = set()
+    with open(input_file_path, "r") as input_file:
+        for line in input_file:
+            value = re.split(delimiter, line)[column_index]
+            if value not in result_set:
+                # ToDo: doesn't accept string:
+                result_set.add(ast.literal_eval(value))
+
+
+def validate_input_distinct(args):
+    assert len(args) == 3, "Wrong number of arguments. This operation requires 3 arguments"
+    assert os.path.isfile(args[0]), "Input file does not exist"
+    assert type(ast.literal_eval(args[1])) is int and int(args[1]) >= 0, "Index must be positive integer"
+    assert os.path.splitext(args[0])[1] == os.path.splitext(args[2])[1], "Files must be the same type"
+    with open(args[0], "r") as input_file:
+        assert len(re.split(delimiter, input_file.next())) > int(args[1]), "Column does not exist in table"
 
 
 def like(*args):
@@ -66,6 +85,7 @@ def input_validation(args, is_union):
 
 
 def tables_structure_validation(file_1_path, file_2_path):
+    # ToDo: can we use numpy? what is eval?
     import numpy as np
     from string import digits
     # https://penandpants.com/2012/03/09/reading-text-tables-with-python/
