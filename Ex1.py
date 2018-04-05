@@ -42,20 +42,16 @@ def like(*args):
 
 
 def input_validation(args, is_union):
-    if len(args) != 3:
-        raise Exception("Wrong number of arguments. This operation requires 3 arguments")
+    assert len(args) == 3, "Wrong number of arguments. This operation requires 3 arguments"
 
-    if not os.path.isfile(args[0]) or (is_union and not os.path.isfile(args[1])):
-        raise Exception("Input arguments don't exist")
+    assert os.path.isfile(args[0]) and (not is_union or os.path.isfile(args[1])), "Input arguments don't exist"
 
     args_extensions = [os.path.splitext(arg)[1] for arg in args]
 
     for arg_extension in args_extensions:
-        if arg_extension not in (".txt", ".csv"):
-            raise Exception("All arguments must be txt or csv files")
+        assert arg_extension in (".txt", ".csv"), "All arguments must be txt or csv files"
 
-    if args_extensions.count(args_extensions[0]) != len(args_extensions):
-        raise Exception("All arguments must be of same type")
+    assert args_extensions.count(args_extensions[0]) == len(args_extensions), "All arguments must be of same type"
 
 
 def tables_structure_validation(file_1_path, file_2_path):
@@ -67,15 +63,13 @@ def tables_structure_validation(file_1_path, file_2_path):
     file_2_structure = np.genfromtxt(file_2_path, delimiter=delimiter, dtype=None).dtype
     error_message = "The tables' format does not match"
 
-    if len(file_1_structure) != len(file_2_structure):
-        raise Exception(error_message)
+    assert len(file_1_structure) == len(file_2_structure), error_message
 
     for i in range(len(file_1_structure.fields)):
         # Extract dtype name of column i and remove digits from it (so that 'int64' == 'int32')
         file_1_col_i_type = file_1_structure.fields.values()[i][0].name.translate(None, digits)
         file_2_col_i_type = file_2_structure.fields.values()[i][0].name.translate(None, digits)
-        if file_1_col_i_type != file_2_col_i_type:
-            raise Exception(error_message)
+        assert file_1_col_i_type == file_2_col_i_type, error_message
 
 
 if __name__ == "__main__":
@@ -88,13 +82,13 @@ if __name__ == "__main__":
                 "LIKE": like
             }
 
-        if len(sys.argv) < 2:
-            raise Exception("Missing operation. Available operations: {0}".format(", ".join(functions_dict.keys())))
+        assert len(sys.argv) >= 2, "Missing operation. Available operations: {0}".format(
+            ", ".join(functions_dict.keys()))
 
         action = sys.argv[1].upper()
 
-        if action not in functions_dict:
-            raise Exception("Invalid operation {0}. Valid operations: {1}".format(action, ", ".join(functions_dict.keys())))
+        assert action in functions_dict, "Invalid operation {0}. Valid operations: {1}".format(action, ", ".join(
+            functions_dict.keys()))
 
         functions_dict[action](sys.argv[2:])
 
