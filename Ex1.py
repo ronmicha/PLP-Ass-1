@@ -15,18 +15,29 @@ def union(*args):
             with open(input_file_path, "r") as input_file:
                 for line in input_file:
                     line = line.strip()
+                    # ToDo (overkill): if the files have the same base file name, then it won't be a unique value
                     output_file.write("{0}{1}{2}\n".format(line, delimiter, file_name))
 
 
 def separate(*args):
     args = args[0]  # Extract arguments list from *args tuple
     input_validation(args, is_union=False)
+    identifier_to_file = {}
+    current_file = 0
     with open(args[1], "w") as output_file_1:
         with open(args[2], "w") as output_file_2:
+            files = {0: output_file_1, 1: output_file_2}
             with open(args[0], "r") as input_file:
                 for line in input_file:
                     split_line = re.split(delimiter, line)
-                    # TODO: write to output_file_1 or output_file_2 based on last column
+                    identifier = split_line[-1].rstrip()  # remove /n
+                    if identifier not in identifier_to_file.keys():
+                        assert current_file <= 1, 'Found more than two distinct file identifiers: {0},{1}'.format(
+                            ",".join(identifier_to_file.keys()), identifier)
+                        identifier_to_file[identifier] = files[current_file]
+                        current_file += 1
+                    new_line = delimiter.join(split_line[:-1]) + "\n"
+                    identifier_to_file[identifier].write(new_line)
 
 
 def distinct(*args):
@@ -81,6 +92,7 @@ if __name__ == "__main__":
                 "DISTINCT": distinct,
                 "LIKE": like
             }
+        # ToDo: in his examples it says seperate
 
         assert len(sys.argv) >= 2, "Missing operation. Available operations: {0}".format(
             ", ".join(functions_dict.keys()))
