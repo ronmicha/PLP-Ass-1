@@ -41,19 +41,44 @@ def separate(*args):
                     identifier_to_file[identifier].write(new_line)
 
 
+# region Distinct
 def distinct(*args):
     args = args[0]
     validate_input_distinct(args)
     input_file_path = args[0]
     column_index = int(args[1])
     output_file_path = args[2]
-    result_set = set()
+    result_set = []  # Using list instead of set because set is not ordered
     with open(input_file_path, "r") as input_file:
         for line in input_file:
-            value = re.split(delimiter, line)[column_index]
+            value = string_to_var(re.split(delimiter, line)[column_index].rstrip())
             if value not in result_set:
-                # ToDo: doesn't accept string:
-                result_set.add(ast.literal_eval(value))
+                result_set.append(value)
+
+    result_set = sort_with_type(result_set)
+    with open(output_file_path, "w") as output_file:
+        for val in result_set:
+            output_file.write(str(val) + '\n')
+
+
+def string_to_var(value):
+    assert value is not None, "Problem parsing value"
+    try:
+        return int(value)
+    except ValueError:
+        return value
+
+
+def sort_with_type(result_set):
+    first_val = next(iter(result_set))
+    # For numbers, sort normally:
+    if type(first_val) is int:
+        return sorted(result_set)
+    # For lists, don't sort:
+    if isinstance(first_val, basestring) and '{' in first_val:
+        return result_set
+    # For strings, sort with no case:
+    return sorted(result_set, key=lambda v: (v.upper(), v[0].islower()))
 
 
 def validate_input_distinct(args):
@@ -64,6 +89,8 @@ def validate_input_distinct(args):
     with open(args[0], "r") as input_file:
         assert len(re.split(delimiter, input_file.next())) > int(args[1]), "Column does not exist in table"
 
+
+# endregion
 
 def like(*args):
     input_file_path = args[0]
