@@ -50,14 +50,10 @@ def separate(*args):
 
 def union_separate_input_validation(args, is_union):
     assert len(args) == 3, "Wrong number of arguments. This operation requires 3 arguments"
-
     assert os.path.isfile(args[0]) and (not is_union or os.path.isfile(args[1])), "Input arguments don't exist"
-
     args_extensions = [os.path.splitext(arg)[1] for arg in args]
-
     for arg_extension in args_extensions:
         assert arg_extension in (".txt", ".csv"), "All arguments must be txt or csv files"
-
     assert args_extensions.count(args_extensions[0]) == len(args_extensions), "All arguments must be of same type"
 
 
@@ -86,7 +82,7 @@ def sort_with_type(result_set):
     first_val = string_to_var(next(iter(result_set)))
     # For numbers, sort normally:
     if isinstance(first_val, int):
-        return sorted(result_set)
+        return sorted(map(int, result_set))
     # For strings, sort with no case:
     if isinstance(first_val, basestring):
         return sorted(result_set, key=lambda v: (v.upper(), v[0].islower()))
@@ -98,7 +94,7 @@ def distinct_input_validation(args):
     assert len(args) == 3, "Wrong number of arguments. This operation requires 3 arguments"
     assert os.path.isfile(args[0]), "Input file does not exist"
     assert isinstance(string_to_var(args[1]), int) and int(args[1]) >= 0, "Index must be non-negative integer"
-    assert os.path.splitext(args[0])[1] == os.path.splitext(args[2])[1], "Files must be the same type"
+    assert os.path.splitext(args[0])[1] == os.path.splitext(args[2])[1], "All arguments must be of same type"
     with open(args[0], "r") as input_file:
         assert len(re.split(delimiter, input_file.next())) > int(args[1]), "Column does not exist in table"
 
@@ -111,14 +107,14 @@ def like(*args):
     like_input_validation(args)
     input_file_path = args[0]
     column_index = int(args[1])
-    regex = args[2]
-    output_file_path = args[3]
+    regex = ".*?" if len(args) < 3 else args[2]
+    output_file_path = "LikeDefaultOutputFile{}".format(os.path.splitext(input_file_path)[1]) if len(args) < 4 else args[3]
     result_set = []  # Using list instead of set because set is not ordered
     pattern = re.compile(regex)
     with open(input_file_path, "r") as input_file:
         for line in input_file:
             value = re.split(delimiter, line)[column_index].rstrip()
-            if pattern.match(value) and value not in result_set:
+            if pattern.search(value) and value not in result_set:
                 result_set.append(line)
 
     with open(output_file_path, "w") as output_file:
@@ -127,16 +123,19 @@ def like(*args):
 
 
 def like_input_validation(args):
-    assert len(args) == 4, "Wrong number of arguments. This operation requires 4 arguments"
+    assert 2 <= len(args) <= 4, "Wrong number of arguments. This operation requires 2-4 arguments"
     assert os.path.isfile(args[0]), "Input file does not exist"
     assert isinstance(string_to_var(args[1]), int) and int(args[1]) >= 0, "Index must be non-negative integer"
-    assert os.path.splitext(args[0])[1] == os.path.splitext(args[3])[1], "Files must be the same type"
+    with open(args[0], "r") as input_file:
+        assert len(re.split(delimiter, input_file.next())) > int(args[1]), "Column does not exist in table"
+    if len(args) == 4:
+        assert os.path.splitext(args[0])[1] == os.path.splitext(args[3])[1], "All arguments must be of same type"
+    elif len(args) == 2:
+        return
     try:
         re.compile(args[2])
     except re.error:
         raise AssertionError("Invalid regular expression")
-    with open(args[0], "r") as input_file:
-        assert len(re.split(delimiter, input_file.next())) > int(args[1]), "Column does not exist in table"
 
 
 def tables_structure_validation(file_1_path, file_2_path):
