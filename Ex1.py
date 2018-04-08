@@ -17,14 +17,14 @@ def union(*args):
     args = args[0]  # Extract arguments list from *args tuple
     union_separate_input_validation(args, is_union=True)
     tables_structure_validation(args[0], args[1])
-    unique_val = 0
+    file_unique_id = 0
     with open(args[2], "w") as output_file:
-        unique_val += 1
         for input_file_path in [args[0], args[1]]:
+            file_unique_id += 1
             with open(input_file_path, "r") as input_file:
                 for line in input_file:
                     line = line.strip()
-                    output_file.write("{0}{1}{2}\n".format(line, delimiter, unique_val))
+                    output_file.write("{0}{1}{2}\n".format(line, delimiter, file_unique_id))
 
 
 def separate(*args):
@@ -85,7 +85,7 @@ def distinct(*args):
 def sort_with_type(result_set):
     first_val = next(iter(result_set))
     # For numbers, sort normally:
-    if isinstance(type(first_val), int):
+    if isinstance(first_val, int):
         return sorted(result_set)
     # For strings, sort with no case:
     if isinstance(first_val, basestring):
@@ -97,7 +97,7 @@ def sort_with_type(result_set):
 def distinct_input_validation(args):
     assert len(args) == 3, "Wrong number of arguments. This operation requires 3 arguments"
     assert os.path.isfile(args[0]), "Input file does not exist"
-    assert isinstance(type(string_to_var(args[1])), int) and int(args[1]) >= 0, "Index must be non-negative integer"
+    assert isinstance(string_to_var(args[1]), int) and int(args[1]) >= 0, "Index must be non-negative integer"
     assert os.path.splitext(args[0])[1] == os.path.splitext(args[2])[1], "Files must be the same type"
     with open(args[0], "r") as input_file:
         assert len(re.split(delimiter, input_file.next())) > int(args[1]), "Column does not exist in table"
@@ -129,7 +129,7 @@ def like(*args):
 def like_input_validation(args):
     assert len(args) == 4, "Wrong number of arguments. This operation requires 4 arguments"
     assert os.path.isfile(args[0]), "Input file does not exist"
-    assert isinstance(type(string_to_var(args[1])), int) and int(args[1]) >= 0, "Index must be non-negative integer"
+    assert isinstance(string_to_var(args[1]), int) and int(args[1]) >= 0, "Index must be non-negative integer"
     assert os.path.splitext(args[0])[1] == os.path.splitext(args[3])[1], "Files must be the same type"
     try:
         re.compile(args[2])
