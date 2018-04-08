@@ -72,7 +72,7 @@ def distinct(*args):
     result_set = []  # Using list instead of set because set is not ordered
     with open(input_file_path, "r") as input_file:
         for line in input_file:
-            value = string_to_var(re.split(delimiter, line)[column_index].rstrip())
+            value = re.split(delimiter, line)[column_index].rstrip()
             if value not in result_set:
                 result_set.append(value)
 
@@ -83,7 +83,7 @@ def distinct(*args):
 
 
 def sort_with_type(result_set):
-    first_val = next(iter(result_set))
+    first_val = string_to_var(next(iter(result_set)))
     # For numbers, sort normally:
     if isinstance(first_val, int):
         return sorted(result_set)
@@ -170,6 +170,8 @@ if __name__ == "__main__":
             functions_dict.keys()))
 
         functions_dict[action](sys.argv[2:])
+
+        print 'Done!'
 
     except Exception as ex:
         print "ERROR:", ex.message
