@@ -157,7 +157,6 @@ if __name__ == "__main__":
             {
                 "UNION": union,
                 "SEPARATE": separate,
-                "SEPERATE": separate,
                 "DISTINCT": distinct,
                 "LIKE": like
             }
