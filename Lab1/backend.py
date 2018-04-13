@@ -67,13 +67,23 @@ def search_movies(movie_id, title, genre):
 def add_movie(movie_id, title, genre):
     with sqlite3.connect(db_path) as connection:
         cursor = connection.cursor()
-        sql_command = "INSERT INTO movies VALUES (?, ?, ?)"
+        sql_command = "INSERT INTO movies " \
+                      "VALUES (?, ?, ?)"
         cursor.execute(sql_command, (movie_id, title, genre))
 
 
 def update_movie(movie_id, title, genre):
-    pass
+    with sqlite3.connect(db_path) as connection:
+        cursor = connection.cursor()
+        sql_command = "UPDATE movies " \
+                      "SET ID = ?, Title = ?, Genre = ? " \
+                      "WHERE ID = ?"
+        cursor.execute(sql_command, (movie_id, title, genre, movie_id))
 
 
 def delete_movie(movie_id):
-    pass
+    with sqlite3.connect(db_path) as connection:
+        cursor = connection.cursor()
+        sql_command = "DELETE FROM movies " \
+                      "WHERE ID = ?"
+        cursor.execute(sql_command, (movie_id,))
