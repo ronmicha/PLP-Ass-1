@@ -104,6 +104,7 @@ def create_rating_table():
         statement = "SELECT name FROM sqlite_master WHERE type='table';"
         if ('ratings',) in cursor.execute(statement).fetchall():
             return
+        # ToDo create primary key witk 2 cols
         sql_command = "CREATE TABLE IF NOT EXISTS ratings (userId INTEGER ,movieId INTEGER," \
                       " rating FLOAT, timestamp TIMESTAMP)"
         cursor.execute(sql_command)
