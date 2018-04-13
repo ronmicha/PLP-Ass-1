@@ -138,36 +138,43 @@ def get_recommendation(userid, k):
     user_avg_q = "SELECT movieID, rating " \
                  "FROM ratings " \
                  "WHERE userID = {0} ".format(userid)
+    # Maps movieID to rating for user with userid
     given_user_ratings = dict(select(user_avg_q))
+    # Average rating for user with userid
     given_user_avg = sum(given_user_ratings.values()) / len(given_user_ratings)
+
     users_id_q = "SELECT userID, movieID, rating  " \
                  "FROM ratings " \
                  "WHERE userID <> {0} AND " \
                  "movieID in (SELECT movieID FROM ratings WHERE userID ={0}) " \
                  "GROUP BY userID, movieID ".format(userid)
-    # Create collection with following format:
-    # [ userID, {movieID: rating, movieID: rating}]
+    # Create dictionary with following format (with users which have at least one movie in common with our user):
+    # { userID: {movieID: rating}}
     users_ratings = [[user[0], [user[1], user[2]]] for user in select(users_id_q)]
     users_ratings = {k: dict(list(zip(*g))[1]) for k, g in groupby(users_ratings, itemgetter(0))}
+
     distances = {}
     for user in users_ratings:
         current_user_ratings = users_ratings[user]
         current_user_avg = sum(current_user_ratings.values()) / len(current_user_ratings)
         mutual_movies = [movieId for movieId in given_user_ratings if movieId in current_user_ratings]
-        numerator = sum(
-            [(given_user_ratings[movieId] - given_user_avg) * (current_user_ratings[movieId] - current_user_avg)
-             for movieId in mutual_movies])
-        denominator_left = sum(
-            [math.pow(given_user_ratings[movieId] - given_user_avg, 2) for movieId in mutual_movies])
-        denominator_right = sum(
-            [math.pow(current_user_ratings[movieId] - current_user_avg, 2) for movieId in mutual_movies])
+
+        numerator = denominator_right = denominator_left = 0
+
+        for movieId in mutual_movies:
+            numerator += (given_user_ratings[movieId] - given_user_avg) * (
+                current_user_ratings[movieId] - current_user_avg)
+            denominator_left += math.pow(given_user_ratings[movieId] - given_user_avg, 2)
+            denominator_right += math.pow(current_user_ratings[movieId] - current_user_avg, 2)
+
         if denominator_left == 0 or denominator_right == 0:
             score = 0
         else:
-            score = numerator / (denominator_left * denominator_right)
+            score = numerator / (math.sqrt(denominator_left) * math.sqrt(denominator_right))
         distances[user] = score
+    # Users ids sorted by distance to user:
     sorted_users = sorted(distances, key=distances.get, reverse=True)
-
+    # Get users' top rated movies:
     recs_ids = []
     for i in range(0, min(k, len(sorted_users) - 1)):
         movies = users_ratings[sorted_users[i]]
@@ -176,11 +183,13 @@ def get_recommendation(userid, k):
             if movie not in recs_ids:
                 recs_ids.append(movie)
                 break
+    # Get movies' titles:
     movies_as_list = ", ".join(str(rec) for rec in recs_ids)
     movies_query = "SELECT ID, Title " \
                    "FROM movies " \
                    "WHERE ID in ({0})".format(movies_as_list)
     id_to_title = dict(select(movies_query))
+    # Return the titles ordered:
     return [id_to_title[id] for id in recs_ids]
 
 
