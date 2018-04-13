@@ -2,36 +2,64 @@ import backend
 from Tkinter import *
 from tkMessageBox import *
 
+selected_item_index = -1
+
 
 def get_all_movies():
-    all_movies = backend.get_all_movies()
-    fill_listbox(all_movies)
+    try:
+        all_movies = backend.get_all_movies()
+        fill_listbox(all_movies)
+    except Exception as ex:
+        show_error_message(ex)
 
 
 def search_movies(movie_id, title, genre):
-    movie_id = "ID" if not movie_id.get() else movie_id.get()
-    title = "Title" if not title.get() else "'{}'".format(title.get())
-    genre = "Genre" if not genre.get() else "'{}'".format(genre.get())
-    movies = backend.search_movies(movie_id, title, genre)
-    fill_listbox(movies)
+    try:
+        movie_id = "ID" if not movie_id.get() else "'{}'".format(movie_id.get().replace("'", "''"))
+        title = "Title" if not title.get() else "'{}'".format(title.get().replace("'", "''"))
+        genre = "Genre" if not genre.get() else "'{}'".format(genre.get().replace("'", "''"))
+        movies = backend.search_movies(movie_id, title, genre)
+        fill_listbox(movies)
+        if not movies:
+            showinfo("No Results Found", "No results found matching your search.")
+    except Exception as ex:
+        show_error_message(ex)
 
 
 def add_movie(movie_id, title, genre):
-    movie_id = movie_id.get()
-    title = title.get()
-    genre = genre.get()
-    if not movie_id or not title or not genre:
-        showerror("Error - Missing Values", "Please fill \"Title\", \"ID\", \"Genre\" fields and try again.")
-        return
-    backend.add_movie(movie_id, title, genre)
+    try:
+        movie_id = movie_id.get()
+        title = title.get()
+        genre = genre.get()
+        if not movie_id or not title or not genre:
+            showerror("Error - Missing Values", "Please fill \"Title\", \"ID\", \"Genre\" fields and try again.")
+            return
+        backend.add_movie(movie_id, title, genre)
+        showinfo("Entry Added Successfully", "Entry added successfully!")
+        get_all_movies()
+    except Exception as ex:
+        show_error_message(ex)
 
 
 def update_movie(new_movie_id, new_title, new_genre):
-    backend.update_movie(new_movie_id.get(), new_title.get(), new_genre.get())
+    # TODO: updating ID throws exception
+    try:
+        selected_item = movies_listbox.get(selected_item_index)
+        old_movie_id = selected_item.split(" | ")[0]
+        backend.update_movie(old_movie_id, new_movie_id.get(), new_title.get(), new_genre.get())
+        showinfo("Entry Updated Successfully", "Entry updated successfully!")
+        get_all_movies()
+    except Exception as ex:
+        show_error_message(ex)
 
 
 def delete_movie(movie_id):
-    backend.delete_movie(movie_id.get())
+    try:
+        backend.delete_movie(movie_id.get())
+        showinfo("Entry Deleted Successfully", "Entry deleted successfully!")
+        get_all_movies()
+    except Exception as ex:
+        show_error_message(ex)
 
 
 def close():
@@ -44,7 +72,8 @@ def fill_listbox(values):
         movies_listbox.insert(END, value)
 
 
-def movies_listbox_on_select(evt):
+def movies_listbox_on_select(event):
+    global selected_item_index
     selected_item_index = movies_listbox.curselection()
     selected_item = movies_listbox.get(selected_item_index)
     movie_id, title, genre = selected_item.split(" | ")
@@ -53,7 +82,15 @@ def movies_listbox_on_select(evt):
     genre_var.set(genre)
 
 
-backend.create_movies_table()
+def show_error_message(ex):
+    showerror("Error", ex.message)
+
+
+try:
+    backend.create_movies_table()
+except Exception as e:
+    show_error_message(e)
+    exit(1)
 
 # region Tkinter GUI
 window = Tk()

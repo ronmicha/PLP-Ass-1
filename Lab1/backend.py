@@ -42,11 +42,7 @@ def get_all_movies():
                       "FROM movies " \
                       "ORDER BY Title"
         cursor.execute(sql_command)
-        all_movies = []
-        for row in cursor.fetchall():
-            row_list = list(row)
-            row_list[0] = str(row_list[0])
-            all_movies.append(" | ".join(row_list))
+        all_movies = convert_cursor_to_list(cursor)
     return all_movies
 
 
@@ -58,11 +54,7 @@ def search_movies(movie_id, title, genre):
                       "WHERE ID = {0} AND Title = {1} AND Genre = {2} " \
                       "ORDER BY Title".format(movie_id, title, genre)
         cursor.execute(sql_command)
-        movies = []
-        for row in cursor.fetchall():
-            row_list = list(row)
-            row_list[0] = str(row_list[0])
-            movies.append(" | ".join(row_list))
+        movies = convert_cursor_to_list(cursor)
     return movies
 
 
@@ -74,13 +66,13 @@ def add_movie(movie_id, title, genre):
         cursor.execute(sql_command, (movie_id, title, genre))
 
 
-def update_movie(movie_id, title, genre):
+def update_movie(old_movie_id, new_movie_id, new_title, new_genre):
     with sqlite3.connect(db_path) as connection:
         cursor = connection.cursor()
         sql_command = "UPDATE movies " \
                       "SET ID = ?, Title = ?, Genre = ? " \
                       "WHERE ID = ?"
-        cursor.execute(sql_command, (movie_id, title, genre, movie_id))
+        cursor.execute(sql_command, (new_movie_id, new_title, new_genre, old_movie_id))
 
 
 def delete_movie(movie_id):
@@ -89,3 +81,12 @@ def delete_movie(movie_id):
         sql_command = "DELETE FROM movies " \
                       "WHERE ID = ?"
         cursor.execute(sql_command, (movie_id,))
+
+
+def convert_cursor_to_list(cursor):
+    lst = []
+    for row in cursor.fetchall():
+        row_list = list(row)
+        row_list[0] = str(row_list[0])
+        lst.append(" | ".join(row_list))
+    return lst
