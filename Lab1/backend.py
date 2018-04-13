@@ -1,9 +1,7 @@
 import os
 import csv
 import sqlite3
-from flask import Flask
-from flask import jsonify
-from flask import request
+from flask import Flask, jsonify, request
 
 db_path = "sqlite_db.db"
 movies_path = "movies.csv"
