@@ -143,11 +143,14 @@ def get_recommendation(userid, k):
     # Average rating for user with userid
     given_user_avg = sum(given_user_ratings.values()) / len(given_user_ratings)
 
+    given_user_movies_string = ", ".join("'{0}'".format(m_id) for m_id in given_user_ratings)
+
     users_id_q = "SELECT userID, movieID, rating  " \
                  "FROM ratings " \
                  "WHERE userID <> {0} AND " \
-                 "movieID in (SELECT movieID FROM ratings WHERE userID ={0}) " \
-                 "GROUP BY userID, movieID ".format(userid)
+                 "userID in " \
+                 "(SELECT DISTINCT(userID) FROM ratings where movieID in({1})) " \
+                 "GROUP BY userID, movieID ".format(userid, given_user_movies_string)
     # Create dictionary with following format (with users which have at least one movie in common with our user):
     # { userID: {movieID: rating}}
     users_ratings = [[user[0], [user[1], user[2]]] for user in select(users_id_q)]
