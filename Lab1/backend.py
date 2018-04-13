@@ -1,5 +1,8 @@
 import os
+from itertools import groupby
+from operator import itemgetter
 import csv
+import math
 import sqlite3
 from flask import Flask, jsonify, request
 
@@ -10,8 +13,9 @@ ratings_path = "ratings.csv"
 app = Flask(__name__)
 
 
+# region Part A
 def create_movies_table():
-    if not os.path.isfile(db_path):
+    if not os.path.isfile(db_path):  # ToDo what if the file already exists but the table isnt?
         with sqlite3.connect(db_path) as connection:
             connection.text_factory = str
             cursor = connection.cursor()
@@ -87,3 +91,114 @@ def delete_movie(movie_id):
         sql_command = "DELETE FROM movies " \
                       "WHERE ID = ?"
         cursor.execute(sql_command, (movie_id,))
+
+
+# endregion
+
+# region Part B
+def create_rating_table():
+    with sqlite3.connect(db_path) as connection:
+        connection.text_factory = str
+        cursor = connection.cursor()
+        statement = "SELECT name FROM sqlite_master WHERE type='table';"
+        if ('ratings',) in cursor.execute(statement).fetchall():
+            return
+        sql_command = "CREATE TABLE IF NOT EXISTS ratings (userId INTEGER ,movieId INTEGER," \
+                      " rating FLOAT, timestamp TIMESTAMP)"
+        cursor.execute(sql_command)
+        connection.commit()
+        with open(ratings_path, "r") as ratings_file:
+            reader = csv.reader(ratings_file)
+            next(reader)  # skip header row
+            ratings_list = []
+            for row in reader:
+                user_id = row[0]
+                movie_id = row[1]
+                rating = row[2]
+                timestamp = row[3]
+                ratings_list.append((user_id, movie_id, rating, timestamp))
+        sql_command = "INSERT INTO ratings (userID, movieID, rating, timestamp) " \
+                      "VALUES (?, ?, ?, ?)"
+        cursor.executemany(sql_command, ratings_list)
+        connection.commit()
+
+
+def select(query):
+    result = []
+    with sqlite3.connect(db_path) as connection:
+        cursor = connection.cursor()
+        cursor.execute(query)
+        result = cursor.fetchall()
+    return result
+
+
+def get_recommendation(userid, k):
+    create_rating_table()
+    user_avg_q = "SELECT movieID, rating " \
+                 "FROM ratings " \
+                 "WHERE userID = {0} ".format(userid)
+    given_user_ratings = dict(select(user_avg_q))
+    given_user_avg = sum(given_user_ratings.values()) / len(given_user_ratings)
+    users_id_q = "SELECT userID, movieID, rating  " \
+                 "FROM ratings " \
+                 "WHERE userID <> {0} AND " \
+                 "movieID in (SELECT movieID FROM ratings WHERE userID ={0}) " \
+                 "GROUP BY userID, movieID ".format(userid)
+    # Create collection with following format:
+    # [ userID, {movieID: rating, movieID: rating}]
+    users_ratings = [[user[0], [user[1], user[2]]] for user in select(users_id_q)]
+    users_ratings = {k: dict(list(zip(*g))[1]) for k, g in groupby(users_ratings, itemgetter(0))}
+    distances = {}
+    for user in users_ratings:
+        current_user_ratings = users_ratings[user]
+        current_user_avg = sum(current_user_ratings.values()) / len(current_user_ratings)
+        mutual_movies = [movieId for movieId in given_user_ratings if movieId in current_user_ratings]
+        numerator = sum(
+            [(given_user_ratings[movieId] - given_user_avg) * (current_user_ratings[movieId] - current_user_avg)
+             for movieId in mutual_movies])
+        denominator_left = sum(
+            [math.pow(given_user_ratings[movieId] - given_user_avg, 2) for movieId in mutual_movies])
+        denominator_right = sum(
+            [math.pow(current_user_ratings[movieId] - current_user_avg, 2) for movieId in mutual_movies])
+        if denominator_left == 0 or denominator_right == 0:
+            score = 0
+        else:
+            score = numerator / (denominator_left * denominator_right)
+        distances[user] = score
+    sorted_users = sorted(distances, key=distances.get, reverse=True)
+
+    recs_ids = []
+    for i in range(0, min(k - 1, len(sorted_users))):
+        movies = users_ratings[sorted_users[i]]
+        movies_sorted = sorted(movies, key=movies.get, reverse=True)
+        for movie in movies_sorted:
+            if movie not in recs_ids:
+                recs_ids.append(movie)
+                break
+    movies_as_list = ", ".join(recs_ids)
+    movies_query = "SELECT movieId, Title " \
+                   "FROM movies " \
+                   "WHERE movieId in ({0})".format(movies_as_list)
+    id_to_title = dict(select(movies_query))
+    return [id_to_title[id] for id in recs_ids]
+
+
+@app.route('/rec', methods=['GET', 'POST'])
+def rec():
+    try:
+        if request.method == 'POST':
+            userid = None if 'userid' not in request.form else request.form['userid']
+            k = None if 'k' not in request.form else request.form['k']
+        elif request.method == 'GET':
+            userid = request.args.get('userid')
+            k = request.args.get('k')
+        if not k or not userid:
+            raise Exception("Missing k or userid")
+        return get_recommendation(int(userid), int(k))
+    except Exception as ex:
+        return ex.message, 500
+
+
+# endregion
+if __name__ == '__main__':
+    app.run()
