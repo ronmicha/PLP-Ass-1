@@ -168,17 +168,17 @@ def get_recommendation(userid, k):
     sorted_users = sorted(distances, key=distances.get, reverse=True)
 
     recs_ids = []
-    for i in range(0, min(k - 1, len(sorted_users))):
+    for i in range(0, min(k, len(sorted_users) - 1)):
         movies = users_ratings[sorted_users[i]]
         movies_sorted = sorted(movies, key=movies.get, reverse=True)
         for movie in movies_sorted:
             if movie not in recs_ids:
                 recs_ids.append(movie)
                 break
-    movies_as_list = ", ".join(recs_ids)
-    movies_query = "SELECT movieId, Title " \
+    movies_as_list = ", ".join(str(rec) for rec in recs_ids)
+    movies_query = "SELECT ID, Title " \
                    "FROM movies " \
-                   "WHERE movieId in ({0})".format(movies_as_list)
+                   "WHERE ID in ({0})".format(movies_as_list)
     id_to_title = dict(select(movies_query))
     return [id_to_title[id] for id in recs_ids]
 
@@ -194,7 +194,7 @@ def rec():
             k = request.args.get('k')
         if not k or not userid:
             raise Exception("Missing k or userid")
-        return get_recommendation(int(userid), int(k))
+        return jsonify(get_recommendation(int(userid), int(k)))
     except Exception as ex:
         return ex.message, 500
 
