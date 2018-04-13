@@ -4,7 +4,6 @@ from tkMessageBox import *
 
 
 def get_all_movies():
-    # TODO: display just the movie names or the whole data? Whole data requires using TkTreectrl (multi-column listbox) which we didn't learn
     all_movies = backend.get_all_movies()
     fill_listbox(all_movies)
 
@@ -28,7 +27,6 @@ def add_movie(movie_id, title, genre):
 
 
 def update_movie(new_movie_id, new_title, new_genre):
-    x = movies_listbox.curselection()
     backend.update_movie(new_movie_id.get(), new_title.get(), new_genre.get())
 
 
@@ -44,6 +42,15 @@ def fill_listbox(values):
     movies_listbox.delete(0, END)  # clear listbox
     for value in values:
         movies_listbox.insert(END, value)
+
+
+def movies_listbox_on_select(evt):
+    selected_item_index = movies_listbox.curselection()
+    selected_item = movies_listbox.get(selected_item_index)
+    movie_id, title, genre = selected_item.split(" | ")
+    id_var.set(movie_id)
+    title_var.set(title)
+    genre_var.set(genre)
 
 
 backend.create_movies_table()
@@ -66,7 +73,7 @@ genre_entry = Entry(window, textvariable=genre_var)
 
 scrollbar = Scrollbar(window, orient=VERTICAL)
 movies_listbox = Listbox(window, selectmode=SINGLE, yscrollcommand=scrollbar.set)
-# movies_listbox.bind("<<ListboxSelect>>", movies_listbox_on_select)
+movies_listbox.bind("<<ListboxSelect>>", movies_listbox_on_select)
 scrollbar.config(command=movies_listbox.yview)
 
 view_all_button = Button(window, text="View all", command=lambda: get_all_movies())
