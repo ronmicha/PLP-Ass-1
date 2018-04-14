@@ -136,11 +136,12 @@ def select(query):
 
 def get_recommendation(userid, k):
     create_rating_table()
-    user_avg_q = "SELECT movieID, rating " \
+    given_user_q = "SELECT movieID, rating " \
                  "FROM ratings " \
                  "WHERE userID = {0} ".format(userid)
     # Maps movieID to rating for user with userid
-    given_user_ratings = dict(select(user_avg_q))
+    given_user_ratings = dict(select(given_user_q))
+    assert len(given_user_ratings) > 0, "User has not rated any movies"
     # Average rating for user with userid
     given_user_avg = sum(given_user_ratings.values()) / len(given_user_ratings)
 
@@ -150,11 +151,13 @@ def get_recommendation(userid, k):
                  "FROM ratings " \
                  "WHERE userID <> {0} AND " \
                  "userID in " \
-                 "(SELECT DISTINCT(userID) FROM ratings where movieID in({1})) " \
-                 "GROUP BY userID, movieID ".format(userid, given_user_movies_string)
+                 "(SELECT DISTINCT(userID) FROM ratings where movieID in({1})) ".format(userid,
+                                                                                        given_user_movies_string)
     # Create dictionary with following format (with users which have at least one movie in common with our user):
     # { userID: {movieID: rating}}
     users_ratings = [[user[0], [user[1], user[2]]] for user in select(users_id_q)]
+    if len(users_ratings) == 0:
+        return []
     users_ratings = {k: dict(list(zip(*g))[1]) for k, g in groupby(users_ratings, itemgetter(0))}
 
     distances = {}
@@ -171,10 +174,12 @@ def get_recommendation(userid, k):
             denominator_left += math.pow(given_user_ratings[movieId] - given_user_avg, 2)
             denominator_right += math.pow(current_user_ratings[movieId] - current_user_avg, 2)
 
-        if denominator_left == 0 or denominator_right == 0:
-            score = 0
-        else:
-            score = numerator / (math.sqrt(denominator_left) * math.sqrt(denominator_right))
+        if denominator_left == 0:
+            denominator_left = 0.1
+        if denominator_right == 0:
+            denominator_right = 0.1
+
+        score = numerator / (math.sqrt(denominator_left) * math.sqrt(denominator_right))
         distances[user] = score
     # Users ids sorted by distance to user:
     sorted_users = sorted(distances, key=distances.get, reverse=True)
@@ -184,7 +189,7 @@ def get_recommendation(userid, k):
         movies = users_ratings[sorted_users[i]]
         movies_sorted = sorted(movies, key=movies.get, reverse=True)
         for movie in movies_sorted:
-            if movie not in recs_ids:
+            if movie not in recs_ids and movie not in given_user_ratings:
                 recs_ids.append(movie)
                 break
     # Get movies' titles:
