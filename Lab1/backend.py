@@ -98,15 +98,15 @@ def convert_cursor_to_list(cursor):
 
 # region Part B
 def create_rating_table():
+    create_movies_table()
     with sqlite3.connect(db_path) as connection:
         connection.text_factory = str
         cursor = connection.cursor()
         statement = "SELECT name FROM sqlite_master WHERE type='table';"
         if ('ratings',) in cursor.execute(statement).fetchall():
             return
-        # ToDo create primary key witk 2 cols
         sql_command = "CREATE TABLE IF NOT EXISTS ratings (userId INTEGER ,movieId INTEGER," \
-                      " rating FLOAT, timestamp TIMESTAMP)"
+                      " rating FLOAT, timestamp TIMESTAMP, PRIMARY KEY (userId, movieId))"
         cursor.execute(sql_command)
         connection.commit()
         with open(ratings_path, "r") as ratings_file:
