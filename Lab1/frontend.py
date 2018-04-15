@@ -38,11 +38,13 @@ def add_movie(movie_id, title, genre):
         showinfo("Entry Added Successfully", "Entry added successfully!")
         get_all_movies()
     except Exception as ex:
-        show_error_message(ex)
+        if isinstance(ex, backend.sqlite3.IntegrityError):
+            show_error_message(Exception("This ID is already in use. Please choose another."))
+        else:
+            show_error_message(ex)
 
 
 def update_movie(new_movie_id, new_title, new_genre):
-    # TODO: updating ID throws exception
     try:
         selected_item = movies_listbox.get(selected_item_index)
         old_movie_id = selected_item.split(" | ")[0]
@@ -50,7 +52,10 @@ def update_movie(new_movie_id, new_title, new_genre):
         showinfo("Entry Updated Successfully", "Entry updated successfully!")
         get_all_movies()
     except Exception as ex:
-        show_error_message(ex)
+        if isinstance(ex, backend.sqlite3.IntegrityError):
+            show_error_message(Exception("Movie ID can't be modified."))
+        else:
+            show_error_message(ex)
 
 
 def delete_movie(movie_id):

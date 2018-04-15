@@ -15,7 +15,7 @@ app = Flask(__name__)
 
 # region Part A
 def create_movies_table():
-    if not os.path.isfile(db_path):  # ToDo what if the file already exists but the table isnt?
+    if not os.path.isfile(db_path):
         with sqlite3.connect(db_path) as connection:
             connection.text_factory = str
             cursor = connection.cursor()
@@ -126,7 +126,6 @@ def create_rating_table():
 
 
 def select(query):
-    result = []
     with sqlite3.connect(db_path) as connection:
         cursor = connection.cursor()
         cursor.execute(query)
@@ -137,8 +136,8 @@ def select(query):
 def get_recommendation(userid, k):
     create_rating_table()
     given_user_q = "SELECT movieID, rating " \
-                 "FROM ratings " \
-                 "WHERE userID = {0} ".format(userid)
+                   "FROM ratings " \
+                   "WHERE userID = {0} ".format(userid)
     # Maps movieID to rating for user with userid
     given_user_ratings = dict(select(given_user_q))
     assert len(given_user_ratings) > 0, "User has not rated any movies"
@@ -151,8 +150,7 @@ def get_recommendation(userid, k):
                  "FROM ratings " \
                  "WHERE userID <> {0} AND " \
                  "userID in " \
-                 "(SELECT DISTINCT(userID) FROM ratings where movieID in({1})) ".format(userid,
-                                                                                        given_user_movies_string)
+                 "(SELECT DISTINCT(userID) FROM ratings where movieID in({1})) ".format(userid, given_user_movies_string)
     # Create dictionary with following format (with users which have at least one movie in common with our user):
     # { userID: {movieID: rating}}
     users_ratings = [[user[0], [user[1], user[2]]] for user in select(users_id_q)]
@@ -219,5 +217,6 @@ def rec():
 
 
 # endregion
+
 if __name__ == '__main__':
     app.run()
