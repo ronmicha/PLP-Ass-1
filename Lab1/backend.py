@@ -1,8 +1,6 @@
 import os
-from itertools import groupby
-from operator import itemgetter
+import sys
 import csv
-import math
 import sqlite3
 from flask import Flask, jsonify, request
 
@@ -97,16 +95,18 @@ def convert_cursor_to_list(cursor):
 # endregion
 
 # region Part B
-def create_rating_table():
+def create_ratings_table():
     create_movies_table()
     with sqlite3.connect(db_path) as connection:
         connection.text_factory = str
         cursor = connection.cursor()
-        statement = "SELECT name FROM sqlite_master WHERE type='table';"
-        if ('ratings',) in cursor.execute(statement).fetchall():
+        statement = "SELECT name " \
+                    "FROM sqlite_master " \
+                    "WHERE type='table' AND name = ?"
+        if cursor.execute(statement, ("ratings",)).fetchall():
             return
-        sql_command = "CREATE TABLE IF NOT EXISTS ratings (userId INTEGER ,movieId INTEGER," \
-                      " rating FLOAT, timestamp TIMESTAMP, PRIMARY KEY (userId, movieId))"
+        sql_command = "CREATE TABLE IF NOT EXISTS ratings (USER_ID INTEGER, MOVIE_ID INTEGER, RATING REAL, TS TEXT, " \
+                      "PRIMARY KEY (USER_ID, MOVIE_ID))"
         cursor.execute(sql_command)
         connection.commit()
         with open(ratings_path, "r") as ratings_file:
@@ -117,103 +117,133 @@ def create_rating_table():
                 user_id = row[0]
                 movie_id = row[1]
                 rating = row[2]
-                timestamp = row[3]
-                ratings_list.append((user_id, movie_id, rating, timestamp))
-        sql_command = "INSERT INTO ratings (userID, movieID, rating, timestamp) " \
+                ts = row[3]
+                ratings_list.append((user_id, movie_id, rating, ts))
+        sql_command = "INSERT INTO ratings (USER_ID, MOVIE_ID, RATING, TS) " \
                       "VALUES (?, ?, ?, ?)"
         cursor.executemany(sql_command, ratings_list)
         connection.commit()
-
-
-def select(query):
-    with sqlite3.connect(db_path) as connection:
-        cursor = connection.cursor()
-        cursor.execute(query)
-        result = cursor.fetchall()
-    return result
-
-
-def get_recommendation(userid, k):
-    create_rating_table()
-    given_user_q = "SELECT movieID, rating " \
-                   "FROM ratings " \
-                   "WHERE userID = {0} ".format(userid)
-    # Maps movieID to rating for user with userid
-    given_user_ratings = dict(select(given_user_q))
-    assert len(given_user_ratings) > 0, "User has not rated any movies"
-    # Average rating for user with userid
-    given_user_avg = sum(given_user_ratings.values()) / len(given_user_ratings)
-
-    given_user_movies_string = ", ".join("'{0}'".format(m_id) for m_id in given_user_ratings)
-
-    users_id_q = "SELECT userID, movieID, rating  " \
-                 "FROM ratings " \
-                 "WHERE userID <> {0} AND " \
-                 "userID in " \
-                 "(SELECT DISTINCT(userID) FROM ratings where movieID in({1})) ".format(userid, given_user_movies_string)
-    # Create dictionary with following format (with users which have at least one movie in common with our user):
-    # { userID: {movieID: rating}}
-    users_ratings = [[user[0], [user[1], user[2]]] for user in select(users_id_q)]
-    if len(users_ratings) == 0:
-        return []
-    users_ratings = {k: dict(list(zip(*g))[1]) for k, g in groupby(users_ratings, itemgetter(0))}
-
-    distances = {}
-    for user in users_ratings:
-        current_user_ratings = users_ratings[user]
-        current_user_avg = sum(current_user_ratings.values()) / len(current_user_ratings)
-        mutual_movies = [movieId for movieId in given_user_ratings if movieId in current_user_ratings]
-
-        numerator = denominator_right = denominator_left = 0
-
-        for movieId in mutual_movies:
-            numerator += (given_user_ratings[movieId] - given_user_avg) * (
-                current_user_ratings[movieId] - current_user_avg)
-            denominator_left += math.pow(given_user_ratings[movieId] - given_user_avg, 2)
-            denominator_right += math.pow(current_user_ratings[movieId] - current_user_avg, 2)
-
-        if denominator_left == 0:
-            denominator_left = 0.1
-        if denominator_right == 0:
-            denominator_right = 0.1
-
-        score = numerator / (math.sqrt(denominator_left) * math.sqrt(denominator_right))
-        distances[user] = score
-    # Users ids sorted by distance to user:
-    sorted_users = sorted(distances, key=distances.get, reverse=True)
-    # Get users' top rated movies:
-    recs_ids = []
-    for i in range(0, min(k, len(sorted_users) - 1)):
-        movies = users_ratings[sorted_users[i]]
-        movies_sorted = sorted(movies, key=movies.get, reverse=True)
-        for movie in movies_sorted:
-            if movie not in recs_ids and movie not in given_user_ratings:
-                recs_ids.append(movie)
-                break
-    # Get movies' titles:
-    movies_as_list = ", ".join(str(rec) for rec in recs_ids)
-    movies_query = "SELECT ID, Title " \
-                   "FROM movies " \
-                   "WHERE ID in ({0})".format(movies_as_list)
-    id_to_title = dict(select(movies_query))
-    # Return the titles ordered:
-    return [id_to_title[id] for id in recs_ids]
 
 
 @app.route('/rec', methods=['GET', 'POST'])
 def rec():
     try:
         if request.method == 'POST':
-            userid = None if 'userid' not in request.form else request.form['userid']
+            user_id = None if 'userid' not in request.form else request.form['userid']
             k = None if 'k' not in request.form else request.form['k']
-        elif request.method == 'GET':
-            userid = request.args.get('userid')
+        else:
+            user_id = request.args.get('userid')
             k = request.args.get('k')
-        if not k or not userid:
+        if not k or not user_id:
             raise Exception("Missing k or userid")
-        return jsonify(get_recommendation(int(userid), int(k)))
+        try:
+            k = int(k)
+            user_id = int(user_id)
+        except ValueError:
+            raise Exception("Wrong parameters. userid and k must be integers.")
+        assert k > 0, "K must be positive"
+        return jsonify(get_user_recommendation(int(user_id), int(k)))
     except Exception as ex:
         return ex.message, 500
+
+
+def get_user_recommendation(user_id, k):
+    create_ratings_table()
+    related_users = get_related_users(user_id)
+    similarities = []  # list of tuples (user_id, similarity)
+    for related_user_id in related_users:
+        related_user_similarity = get_similarity(user_id, related_user_id)
+        similarities.append(related_user_similarity)
+    # sort list by similarity desc
+    similarities.sort(key=lambda sim_tuple: sim_tuple[1], reverse=True)
+    recommended_movies_ids = get_recommended_movies_ids(user_id, similarities, k)
+    id_to_title_dict = get_id_to_title_dict(recommended_movies_ids)
+    recommended_movies = [id_to_title_dict[movie_id] for movie_id in recommended_movies_ids]
+    return recommended_movies
+
+
+def get_related_users(user_id):
+    with sqlite3.connect(db_path) as connection:
+        cursor = connection.cursor()
+        inner_sql_command = "SELECT MOVIE_ID " \
+                            "FROM ratings " \
+                            "WHERE USER_ID = ?"
+        sql_command = "SELECT DISTINCT USER_ID " \
+                      "FROM ratings " \
+                      "WHERE USER_ID <> ? AND MOVIE_ID IN ({0})".format(inner_sql_command)
+        cursor.execute(sql_command, (user_id, user_id))
+        return [row[0] for row in cursor.fetchall()]
+
+
+def get_similarity(user_id_1, user_id_2):
+    with sqlite3.connect(db_path) as connection:
+        cursor = connection.cursor()
+        avg_rating_sql_command = "SELECT AVG(RATING) " \
+                                 "FROM ratings " \
+                                 "WHERE USER_ID IN (?, ?) " \
+                                 "GROUP BY USER_ID"
+        cursor.execute(avg_rating_sql_command, (user_id_1, user_id_2))
+        user_1_avg_rating = cursor.fetchone()[0]
+        user_2_avg_rating = cursor.fetchone()[0]
+        sql_command = "SELECT * " \
+                      "FROM ratings r1 INNER JOIN ratings r2 " \
+                      "ON r1.MOVIE_ID = r2.MOVIE_ID " \
+                      "WHERE r1.USER_ID = ? AND r2.USER_ID = ?"
+        cursor.execute(sql_command, (user_id_1, user_id_2))
+        joint_movies = [row for row in cursor.fetchall()]
+
+    numerator = denominator_left = denominator_right = 0
+    for row in joint_movies:
+        user_1_rating = row[2]
+        user_2_rating = row[6]
+        numerator += (user_1_rating - user_1_avg_rating) * (user_2_rating - user_2_avg_rating)
+        denominator_left += (user_1_rating - user_1_avg_rating) ** 2
+        denominator_right += (user_2_rating - user_2_avg_rating) ** 2
+
+    if denominator_left == 0:
+        denominator_left += sys.float_info.epsilon
+    if denominator_right == 0:
+        denominator_right += sys.float_info.epsilon
+    denominator_left = denominator_left ** 0.5
+    denominator_right = denominator_right ** 0.5
+    similarity = numerator / (denominator_left * denominator_right)
+    return user_id_2, similarity
+
+
+def get_recommended_movies_ids(user_id, similarities, k):
+    recommended_movies_ids = []
+    with sqlite3.connect(db_path) as connection:
+        cursor = connection.cursor()
+        user_movies_ids_sql_command = "SELECT MOVIE_ID " \
+                                      "FROM ratings " \
+                                      "WHERE USER_ID = ?"
+        cursor.execute(user_movies_ids_sql_command, (user_id,))
+        user_movies_ids = set(cursor.fetchall())
+        sql_command = "SELECT MOVIE_ID " \
+                      "FROM ratings " \
+                      "WHERE USER_ID = ? " \
+                      "ORDER BY RATING DESC"
+        for similarity in similarities:
+            user_id = similarity[0]
+            cursor.execute(sql_command, (user_id,))
+            movie_id = cursor.fetchone()[0]
+            while movie_id in recommended_movies_ids or movie_id in user_movies_ids:
+                movie_id = cursor.fetchone()[0]
+            recommended_movies_ids.append(movie_id)
+            if len(recommended_movies_ids) == k:
+                break
+    return recommended_movies_ids
+
+
+def get_id_to_title_dict(movies_ids):
+    movies_ids = ", ".join(str(movie_id) for movie_id in movies_ids)
+    with sqlite3.connect(db_path) as connection:
+        cursor = connection.cursor()
+        sql_command = "SELECT DISTINCT ID, Title " \
+                      "FROM movies " \
+                      "WHERE ID IN ({0})".format(movies_ids)
+        cursor.execute(sql_command)
+        return dict(cursor.fetchall())
 
 
 # endregion

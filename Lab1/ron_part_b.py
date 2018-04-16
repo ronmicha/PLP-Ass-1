@@ -37,22 +37,35 @@ def create_ratings_table():
 
 @app.route('/rec', methods=['GET', 'POST'])
 def rec():
-    if request.method == "GET":
-        if len(request.args) != 2:
-            return "Bad request. Please provide 'userid' and 'k'", 400
-        user_id = request.args["userid"]
-        k = request.args["k"]
+    # if request.method == "GET":
+    #     if len(request.args) != 2:
+    #         return "Bad request. Please provide 'userid' and 'k'", 400
+    #     user_id = request.args["userid"]
+    #     k = request.args["k"]
+    #
+    # else:  # request.method == "POST"
+    #     if len(request.data) != 2:
+    #         return "Bad request. Please provide 'userid' and 'k'", 400
+    #     user_id = request.data["userid"]
+    #     k = request.data["k"]
+    #
+    # if not user_id or not k:
+    #     return "Bad request. 'userid' and 'k' must have values", 400
+    #
+    # return jsonify(get_user_recommendation(int(user_id), int(k))), 200
 
-    else:  # request.method == "POST"
-        if len(request.data) != 2:
-            return "Bad request. Please provide 'userid' and 'k'", 400
-        user_id = request.data["userid"]
-        k = request.data["k"]
-
-    if not user_id or not k:
-        return "Bad request. 'userid' and 'k' must have values", 400
-
-    return jsonify(get_user_recommendation(int(user_id), int(k))), 200
+    try:
+        if request.method == 'POST':
+            user_id = None if 'userid' not in request.form else request.form['userid']
+            k = None if 'k' not in request.form else request.form['k']
+        else:
+            user_id = request.args.get('userid')
+            k = request.args.get('k')
+        if not k or not user_id:
+            raise Exception("Missing k or userid")
+        return jsonify(get_user_recommendation(int(user_id), int(k)))
+    except Exception as ex:
+        return ex.message, 500
 
 
 def get_user_recommendation(user_id, k):
@@ -63,8 +76,9 @@ def get_user_recommendation(user_id, k):
         similarities.append(related_user_similarity)
     # sort list by similarity desc
     similarities.sort(key=lambda sim_tuple: sim_tuple[1], reverse=True)
-    recommended_movies_ids = get_recommended_movies_ids(similarities, k)
-    recommended_movies = get_movies_names(recommended_movies_ids)
+    recommended_movies_ids = get_recommended_movies_ids(user_id, similarities, k)
+    id_to_title_dict = get_id_to_title_dict(recommended_movies_ids)
+    recommended_movies = [id_to_title_dict[movie_id] for movie_id in recommended_movies_ids]
     return recommended_movies
 
 
@@ -116,10 +130,15 @@ def get_similarity(user_id_1, user_id_2):
     return user_id_2, similarity
 
 
-def get_recommended_movies_ids(similarities, k):
-    recommended_movies_ids = set()
+def get_recommended_movies_ids(user_id, similarities, k):
+    recommended_movies_ids = []
     with sqlite3.connect(db_path) as connection:
         cursor = connection.cursor()
+        user_movies_ids_sql_command = "SELECT MOVIE_ID " \
+                                      "FROM ratings " \
+                                      "WHERE USER_ID = ?"
+        cursor.execute(user_movies_ids_sql_command, (user_id,))
+        user_movies_ids = set(cursor.fetchall())
         sql_command = "SELECT MOVIE_ID " \
                       "FROM ratings " \
                       "WHERE USER_ID = ? " \
@@ -128,23 +147,23 @@ def get_recommended_movies_ids(similarities, k):
             user_id = similarity[0]
             cursor.execute(sql_command, (user_id,))
             movie_id = cursor.fetchone()[0]
-            while movie_id in recommended_movies_ids:
+            while movie_id in recommended_movies_ids or movie_id in user_movies_ids:
                 movie_id = cursor.fetchone()[0]
-            recommended_movies_ids.add(movie_id)
+            recommended_movies_ids.append(movie_id)
             if len(recommended_movies_ids) == k:
                 break
     return recommended_movies_ids
 
 
-def get_movies_names(movies_ids):
+def get_id_to_title_dict(movies_ids):
     movies_ids = ", ".join(str(movie_id) for movie_id in movies_ids)
     with sqlite3.connect(db_path) as connection:
         cursor = connection.cursor()
-        sql_command = "SELECT DISTINCT Title " \
+        sql_command = "SELECT DISTINCT ID, Title " \
                       "FROM movies " \
                       "WHERE ID IN ({0})".format(movies_ids)
         cursor.execute(sql_command)
-        return [row[0] for row in cursor.fetchall()]
+        return dict(cursor.fetchall())
 
 
 if __name__ == '__main__':
