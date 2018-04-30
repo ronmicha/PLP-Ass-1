@@ -264,6 +264,28 @@ class TestInheritance(unittest.TestCase):
         self.assertFalse(isSubclassPPL(self.C0, object))
         self.assertFalse(isSubclassPPL(self.C5_1, object))
 
+        self.assertTrue(isSubclassPPL(type(self.C0()), self.C0))
+        self.assertTrue(isSubclassPPL(type(self.C1_0()), self.C0))
+        self.assertTrue(isSubclassPPL(type(self.C2_0()), self.C0))
+        self.assertTrue(isSubclassPPL(type(self.C1_0()), self.C1_0))
+        self.assertTrue(isSubclassPPL(type(self.C2_0()), self.C2_0))
+
+        self.assertTrue(isSubclassPPL(type(self.C3_12()), self.C0))
+        self.assertTrue(isSubclassPPL(type(self.C3_12()), self.C1_0))
+        self.assertTrue(isSubclassPPL(type(self.C3_12()), self.C2_0))
+        self.assertFalse(isSubclassPPL(type(self.C3_12()), self.C4_2))
+
+        self.assertFalse(isSubclassPPL(type(self.C4_2()), self.C1_0))
+        self.assertTrue(isSubclassPPL(type(self.C3_12()), self.C0))
+
+        self.assertFalse(isSubclassPPL(type(self.C5_1()), self.C3_12))
+
+        self.assertTrue(isSubclassPPL(type(self.Cobj_obj()), object))
+        self.assertTrue(isSubclassPPL(type(self.Cobj2_Cojb()), object))
+        self.assertTrue(isSubclassPPL(type(self.Cobj2_Cojb()), self.Cobj_obj))
+        self.assertFalse(isSubclassPPL(type(self.C0()), object))
+        self.assertFalse(isSubclassPPL(type(self.C5_1()), object))
+
     def test_isinstance_classes_num(self):
         self.assertEqual(numSubclassPPL(self.C0, self.C0), 1)
         self.assertEqual(numSubclassPPL(self.C1_0, self.C0), 2)
@@ -281,6 +303,23 @@ class TestInheritance(unittest.TestCase):
         self.assertEqual(numSubclassPPL(self.Cobj2_Cojb, self.Cobj_obj), 2)
         self.assertEqual(numSubclassPPL(self.C0, object), 0)
         self.assertEqual(numSubclassPPL(self.C5_1, object), 0)
+
+        self.assertEqual(numSubclassPPL(type(self.C0()), self.C0), 1)
+        self.assertEqual(numSubclassPPL(type(self.C1_0()), self.C0), 2)
+        self.assertEqual(numSubclassPPL(type(self.C2_0()), self.C0), 2)
+        self.assertEqual(numSubclassPPL(type(self.C1_0()), self.C1_0), 1)
+        self.assertEqual(numSubclassPPL(type(self.C2_0()), self.C2_0), 1)
+        self.assertEqual(numSubclassPPL(type(self.C3_12()), self.C0), 3)
+        self.assertEqual(numSubclassPPL(type(self.C3_12()), self.C1_0), 2)
+        self.assertEqual(numSubclassPPL(type(self.C3_12()), self.C2_0), 2)
+        self.assertEqual(numSubclassPPL(type(self.C3_12()), self.C4_2), 0)
+        self.assertEqual(numSubclassPPL(type(self.C4_2()), self.C1_0), 0)
+        self.assertEqual(numSubclassPPL(type(self.C5_1()), self.C3_12), 0)
+        self.assertEqual(numSubclassPPL(type(self.Cobj_obj()), object), 2)
+        self.assertEqual(numSubclassPPL(type(self.Cobj2_Cojb()), object), 3)
+        self.assertEqual(numSubclassPPL(type(self.Cobj2_Cojb()), self.Cobj_obj), 2)
+        self.assertEqual(numSubclassPPL(type(self.C0()), object), 0)
+        self.assertEqual(numSubclassPPL(type(self.C5_1()), object), 0)
 
 
 if __name__ == '__main__':
