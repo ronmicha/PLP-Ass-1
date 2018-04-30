@@ -1,6 +1,9 @@
-# region Q1
 from math import sqrt
 import types
+import collections
+
+
+# region Q1
 
 
 class ComplexNum:
@@ -115,20 +118,33 @@ def numSubclassPPL(class_class, classInfo):
 
 # region Q3
 def count_if(lst, func):
+    assert_type(isinstance(lst, collections.Iterable), "Passed object must be iterable")
+    assert_type(isinstance(func, types.FunctionType), "Passed function must be of type function")
+
     return len(filter(func, lst))
 
 
 def for_all(lst, apply, pred):
+    assert_type(isinstance(lst, collections.Iterable), "Passed object must be iterable")
+    assert_type(isinstance(apply, types.FunctionType) or isinstance(pred, types.FunctionType), "Passed functions must be of type function")
+
     applied = map(apply, lst)
     return len(filter(pred, applied)) == len(lst)
 
 
 def for_all_red(lst, apply, pred):
+    assert_type(isinstance(lst, collections.Iterable), "Passed object must be iterable")
+    assert_type(isinstance(apply, types.FunctionType) or isinstance(pred, types.FunctionType), "Passed functions must be of type function")
+
     reduced = reduce(apply, lst)
     return len(filter(pred, [reduced])) > 0
 
 
 def there_exists(lst, n, pred):
+    assert_type(isinstance(lst, collections.Iterable), "Passed object must be iterable")
+    assert_type(isinstance(pred, types.FunctionType), "Passed function must be of type function")
+    assert_type(n >= 0, "n must be a non-negative number")
+
     return len(filter(pred, lst)) >= n
 
 

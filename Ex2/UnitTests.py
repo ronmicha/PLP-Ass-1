@@ -326,10 +326,15 @@ class TestFunctions(unittest.TestCase):
     def test_count_if(self):
         self.assertEqual(count_if([1, 0, 8], lambda x: x > 2), 1)
         self.assertEqual(count_if([1, 1, 8], lambda x: x == 1), 2)
+        self.assertEqual(count_if([1, 1, "a", "b"], lambda x: x == 1), 2)
+        self.assertEqual(count_if([], lambda x: x == 0), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(count_if(None, None), 0)
 
     def test_for_all(self):
-        self.assertFalse(for_all([1, 0, 8], lambda x: x * 2, lambda x: x > 0))
         self.assertTrue(for_all([1, 1, 8], lambda x: x, lambda x: x > 0))
+        self.assertTrue(for_all([8, 3, 8, 4, 58, 3], lambda x: x * 2, lambda x: x % 2 == 0))
+        self.assertFalse(for_all([1, 0, 8], lambda x: x * 2, lambda x: x > 0))
 
     def test_for_all_red(self):
         self.assertTrue(for_all_red([1, 1, 8], lambda x, y: x * y, lambda x: x > 7))
