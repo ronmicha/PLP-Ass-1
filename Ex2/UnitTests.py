@@ -66,5 +66,17 @@ class TestComplexNum(unittest.TestCase):
             ComplexNum(-1, 4) == None
 
 
+class TestInheritance(unittest.TestCase):
+    class X:
+        def __init__(self):
+            self.message = 'X'
+
+    class Y:
+        def __init__(self):
+            self.message = 'Y'
+
+    pass
+
+
 if __name__ == '__main__':
     unittest.main()
