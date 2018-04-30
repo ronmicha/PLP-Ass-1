@@ -1,5 +1,6 @@
 # region Q1
 from math import sqrt
+import types
 
 
 class ComplexNum:
@@ -80,7 +81,9 @@ def isInstancePPL(object1, classInfo):
                 return True
         return False
 
-    # ToDo add assertion for classInfo
+    assert_type(object1 is not None, "Object must not be None")
+    assert_type(type(classInfo) is types.ClassType or type(classInfo) is types.TypeType,
+                "ClassInfo must be classobj or type type")
     return isInstanceRecursive(obj_class=object1.__class__, class_info=classInfo)
 
 

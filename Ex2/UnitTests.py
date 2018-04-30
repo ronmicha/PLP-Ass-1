@@ -101,7 +101,7 @@ class TestInheritance(unittest.TestCase):
         self.Cobj_obj = Cobj_obj
         self.Cobj2_Cojb = Cobj2_Cojb
 
-    def test_isinstance(self):
+    def test_isinstance_objects(self):
         self.assertTrue(isInstancePPL(self.C0(), self.C0))
         self.assertTrue(isInstancePPL(self.C1_0(), self.C0))
         self.assertTrue(isInstancePPL(self.C2_0(), self.C0))
@@ -123,6 +123,24 @@ class TestInheritance(unittest.TestCase):
         self.assertTrue(isInstancePPL(self.Cobj2_Cojb(), self.Cobj_obj))
         self.assertFalse(isInstancePPL(self.C0(), object))
         self.assertFalse(isInstancePPL(self.C5_1(), object))
+
+    def test_isinstance_variables(self):
+        with self.assertRaises(TypeError):
+            isInstancePPL(None, int)
+        with self.assertRaises(TypeError):
+            isInstancePPL(1, None)
+
+        self.assertTrue(isInstancePPL(1, int))
+        # self.assertTrue(isInstancePPL(1, float))
+        # self.assertTrue(isInstancePPL(1.0, int))
+        self.assertTrue(isInstancePPL(1.0, float))
+        self.assertTrue(isInstancePPL(1.5, float))
+        self.assertTrue(isInstancePPL("test", str))
+        # self.assertTrue(isInstancePPL(lambda x: 2 * x, function))
+        self.assertTrue(isInstancePPL([1, 'a'], list))
+        self.assertTrue(isInstancePPL({"1": 1, "2": "2"}, dict))
+        self.assertTrue(isInstancePPL(set(), set))
+        self.assertTrue(isInstancePPL((1, 2), tuple))
 
 
 if __name__ == '__main__':
