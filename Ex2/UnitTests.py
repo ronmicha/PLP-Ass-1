@@ -1,4 +1,5 @@
 import unittest
+from types import *
 from Ex2 import ComplexNum, isInstancePPL
 
 
@@ -131,12 +132,13 @@ class TestInheritance(unittest.TestCase):
             isInstancePPL(1, None)
 
         self.assertTrue(isInstancePPL(1, int))
-        # self.assertTrue(isInstancePPL(1, float))
-        # self.assertTrue(isInstancePPL(1.0, int))
+        self.assertFalse(isInstancePPL(1, float))
+        self.assertFalse(isInstancePPL(1.0, int))
         self.assertTrue(isInstancePPL(1.0, float))
         self.assertTrue(isInstancePPL(1.5, float))
         self.assertTrue(isInstancePPL("test", str))
-        # self.assertTrue(isInstancePPL(lambda x: 2 * x, function))
+        self.assertTrue(isInstancePPL(lambda x: 2 * x, LambdaType))
+        self.assertTrue(isInstancePPL(self.test_isinstance_objects, MethodType))
         self.assertTrue(isInstancePPL([1, 'a'], list))
         self.assertTrue(isInstancePPL({"1": 1, "2": "2"}, dict))
         self.assertTrue(isInstancePPL(set(), set))
