@@ -72,19 +72,44 @@ class ComplexNum:
 # endregion
 
 # region Q2
-def isInstancePPL(object1, classInfo):
-    def isInstanceRecursive(obj_class, class_info):
-        if obj_class is class_info:
-            return True
-        for base in obj_class.__bases__:
-            if isInstanceRecursive(base, class_info):
-                return True
-        return False
+def isInstanceRecursive(obj_class, class_info):
+    if obj_class is class_info:
+        return 1
+    for base in obj_class.__bases__:
+        distance = isInstanceRecursive(base, class_info)
+        if distance > 0:
+            return distance + 1
+    return 0
 
+
+def isInstancePPL(object1, classInfo):
+    assert_type(object1 is not None, "Object must not be None")
+    assert_type(type(classInfo) is types.ClassType or type(classInfo) is types.TypeType,
+                "ClassInfo must be classobj or type type")
+    return isInstanceRecursive(obj_class=object1.__class__, class_info=classInfo) > 0
+
+
+def numInstancePPL(object1, classInfo):
     assert_type(object1 is not None, "Object must not be None")
     assert_type(type(classInfo) is types.ClassType or type(classInfo) is types.TypeType,
                 "ClassInfo must be classobj or type type")
     return isInstanceRecursive(obj_class=object1.__class__, class_info=classInfo)
+
+
+def isSubclassPPL(class_class, classInfo):
+    assert_type(type(class_class) is types.ClassType or type(
+        class_class) is types.TypeType, "class must be class or type type")
+    assert_type(type(classInfo) is types.ClassType or type(classInfo) is types.TypeType,
+                "ClassInfo must be classobj or type type")
+    return isInstanceRecursive(obj_class=class_class, class_info=classInfo) > 0
+
+
+def numSubclassPPL(class_class, classInfo):
+    assert_type(type(class_class) is types.ClassType or type(
+        class_class) is types.TypeType, "class must be class or type type")
+    assert_type(type(classInfo) is types.ClassType or type(classInfo) is types.TypeType,
+                "ClassInfo must be classobj or type type")
+    return isInstanceRecursive(obj_class=class_class, class_info=classInfo)
 
 
 # endregion
