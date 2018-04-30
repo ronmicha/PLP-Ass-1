@@ -71,7 +71,13 @@ class ComplexNum:
         if not condition:
             raise TypeError(message)
 
+
 # endregion
+
 # region Q2
+def isInstancePPL(object1, classInfo):
+    current = object1
+    while type(current) is not classInfo:
+        current = current.parent
 
 # endregion
