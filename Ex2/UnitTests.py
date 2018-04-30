@@ -1,3 +1,4 @@
+import math
 import unittest
 from types import *
 from Ex2 import *
@@ -65,6 +66,84 @@ class TestComplexNum(unittest.TestCase):
             ComplexNum(-1, 4) == "im a string"
         with self.assertRaises(TypeError):
             ComplexNum(-1, 4) == None
+
+    def test_add(self):
+        sets = [
+            [1, 2, 1, -3, 2, -1],
+            [0, 0, 0, 0, 0, 0],
+            [1, 2, 0, 0, 1, 2],
+            [1, 2, -1, -2, 0, 0],
+            [-1, -3, -2, -5, -3, -8],
+            [3, 3, 0, 3, 3, 6],
+            [4, 4, 4, 0, 8, 4]
+        ]
+        for numbers in sets:
+            a1, b1, a2, b2, ra, rb = numbers
+            # (a1+b1*i)+(a2+b2*i)=(ra+rb*i)
+            self.assertTrue(ComplexNum(a1, b1) + ComplexNum(a2, b2) == ComplexNum(ra, rb))
+
+    def test_subtract(self):
+        sets = [
+            [1, 2, 1, -3, 0, 5],
+            [1, 2, 4, 3, -3, -1],
+            [0, 0, 0, 0, 0, 0],
+            [1, 2, 1, 2, 0, 0],
+            [1, 2, 0, 0, 1, 2],
+            [1, 2, -1, -2, 2, 4],
+            [-1, -3, -2, -5, 1, 2],
+            [3, 3, 0, 3, 3, 0],
+            [4, 4, 4, 0, 0, 4]
+        ]
+        for numbers in sets:
+            a1, b1, a2, b2, ra, rb = numbers
+            self.assertTrue(ComplexNum(a1, b1) - ComplexNum(a2, b2) == ComplexNum(ra, rb))
+
+    def test_multiply(self):
+        sets = [
+            [1, 2, 1, -3, 7, -1],
+            [1, 2, 4, 3, -2, 11],
+            [0, 0, 0, 0, 0, 0],
+            [1, 2, 1, 2, -3, 4],
+            [1, 2, 0, 0, 0, 0],
+            [1, 2, -1, -2, 3, -4],
+            [-1, -3, -2, -5, -13, 11],
+            [3, 3, 0, 3, -9, 9],
+            [4, 4, 4, 0, 16, 16]
+        ]
+        for numbers in sets:
+            a1, b1, a2, b2, ra, rb = numbers
+            # print ("(" + str(ComplexNum(a1, b1)) + ")*(" + str(ComplexNum(a2, b2)) + ")")
+            self.assertTrue(ComplexNum(a1, b1) * ComplexNum(a2, b2) == ComplexNum(ra, rb))
+
+    def test_conjugate(self):
+        sets = [
+            [1, 2],
+            [1, 2],
+            [0, 0],
+            [1, 2],
+            [-1, -3],
+            [3, 3],
+            [4, 4],
+            [1, -1]
+        ]
+        for numbers in sets:
+            a1, b1 = numbers
+            # print ("(" + str(ComplexNum(a1, b1)) + ")*(" + str(ComplexNum(a2, b2)) + ")")
+            self.assertTrue(ComplexNum(a1, b1).conjugate() == ComplexNum(a1, -b1))
+
+    def test_abs(self):
+        sets = [
+            [1, 2],
+            [0, 0],
+            [1, 2],
+            [-1, -3],
+            [3, 3],
+            [4, 4],
+            [1, -1]
+        ]
+        for numbers in sets:
+            a1, b1 = numbers
+            self.assertTrue(ComplexNum(a1, b1).abs() == math.sqrt(a1 * a1 + b1 * b1))
 
 
 class TestInheritance(unittest.TestCase):
@@ -185,6 +264,28 @@ class TestInheritance(unittest.TestCase):
         self.assertFalse(isSubclassPPL(self.C0, object))
         self.assertFalse(isSubclassPPL(self.C5_1, object))
 
+        self.assertTrue(isSubclassPPL(type(self.C0()), self.C0))
+        self.assertTrue(isSubclassPPL(type(self.C1_0()), self.C0))
+        self.assertTrue(isSubclassPPL(type(self.C2_0()), self.C0))
+        self.assertTrue(isSubclassPPL(type(self.C1_0()), self.C1_0))
+        self.assertTrue(isSubclassPPL(type(self.C2_0()), self.C2_0))
+
+        self.assertTrue(isSubclassPPL(type(self.C3_12()), self.C0))
+        self.assertTrue(isSubclassPPL(type(self.C3_12()), self.C1_0))
+        self.assertTrue(isSubclassPPL(type(self.C3_12()), self.C2_0))
+        self.assertFalse(isSubclassPPL(type(self.C3_12()), self.C4_2))
+
+        self.assertFalse(isSubclassPPL(type(self.C4_2()), self.C1_0))
+        self.assertTrue(isSubclassPPL(type(self.C3_12()), self.C0))
+
+        self.assertFalse(isSubclassPPL(type(self.C5_1()), self.C3_12))
+
+        self.assertTrue(isSubclassPPL(type(self.Cobj_obj()), object))
+        self.assertTrue(isSubclassPPL(type(self.Cobj2_Cojb()), object))
+        self.assertTrue(isSubclassPPL(type(self.Cobj2_Cojb()), self.Cobj_obj))
+        self.assertFalse(isSubclassPPL(type(self.C0()), object))
+        self.assertFalse(isSubclassPPL(type(self.C5_1()), object))
+
     def test_isinstance_classes_num(self):
         self.assertEqual(numSubclassPPL(self.C0, self.C0), 1)
         self.assertEqual(numSubclassPPL(self.C1_0, self.C0), 2)
@@ -202,6 +303,23 @@ class TestInheritance(unittest.TestCase):
         self.assertEqual(numSubclassPPL(self.Cobj2_Cojb, self.Cobj_obj), 2)
         self.assertEqual(numSubclassPPL(self.C0, object), 0)
         self.assertEqual(numSubclassPPL(self.C5_1, object), 0)
+
+        self.assertEqual(numSubclassPPL(type(self.C0()), self.C0), 1)
+        self.assertEqual(numSubclassPPL(type(self.C1_0()), self.C0), 2)
+        self.assertEqual(numSubclassPPL(type(self.C2_0()), self.C0), 2)
+        self.assertEqual(numSubclassPPL(type(self.C1_0()), self.C1_0), 1)
+        self.assertEqual(numSubclassPPL(type(self.C2_0()), self.C2_0), 1)
+        self.assertEqual(numSubclassPPL(type(self.C3_12()), self.C0), 3)
+        self.assertEqual(numSubclassPPL(type(self.C3_12()), self.C1_0), 2)
+        self.assertEqual(numSubclassPPL(type(self.C3_12()), self.C2_0), 2)
+        self.assertEqual(numSubclassPPL(type(self.C3_12()), self.C4_2), 0)
+        self.assertEqual(numSubclassPPL(type(self.C4_2()), self.C1_0), 0)
+        self.assertEqual(numSubclassPPL(type(self.C5_1()), self.C3_12), 0)
+        self.assertEqual(numSubclassPPL(type(self.Cobj_obj()), object), 2)
+        self.assertEqual(numSubclassPPL(type(self.Cobj2_Cojb()), object), 3)
+        self.assertEqual(numSubclassPPL(type(self.Cobj2_Cojb()), self.Cobj_obj), 2)
+        self.assertEqual(numSubclassPPL(type(self.C0()), object), 0)
+        self.assertEqual(numSubclassPPL(type(self.C5_1()), object), 0)
 
 
 class TestFunctions(unittest.TestCase):
