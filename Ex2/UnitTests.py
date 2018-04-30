@@ -1,5 +1,5 @@
 import unittest
-from ComplexNum import ComplexNum
+from Ex2 import ComplexNum
 
 
 class TestComplexNum(unittest.TestCase):
