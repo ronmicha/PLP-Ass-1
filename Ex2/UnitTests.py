@@ -1,5 +1,5 @@
 import unittest
-from Ex2 import ComplexNum
+from Ex2 import ComplexNum, isInstancePPL
 
 
 class TestComplexNum(unittest.TestCase):
@@ -67,15 +67,21 @@ class TestComplexNum(unittest.TestCase):
 
 
 class TestInheritance(unittest.TestCase):
-    class X:
-        def __init__(self):
-            self.message = 'X'
+    def setUp(self):
+        class X:
+            def __init__(self):
+                self.message = 'X'
 
-    class Y:
-        def __init__(self):
-            self.message = 'Y'
+        class Y:
+            def __init__(self):
+                self.message = 'Y'
 
-    pass
+        self.X = X
+        self.Y = Y
+
+    def test_isinstance(self):
+        x = self.X()
+        isInstancePPL(x, self.X)
 
 
 if __name__ == '__main__':

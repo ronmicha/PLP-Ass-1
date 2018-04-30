@@ -77,7 +77,7 @@ class ComplexNum:
 # region Q2
 def isInstancePPL(object1, classInfo):
     current = object1
-    while type(current) is not classInfo:
-        current = current.parent
+    while current.__class__ is not classInfo:
+        current = current.__bases__
 
 # endregion
