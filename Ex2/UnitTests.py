@@ -68,20 +68,61 @@ class TestComplexNum(unittest.TestCase):
 
 class TestInheritance(unittest.TestCase):
     def setUp(self):
-        class X:
-            def __init__(self):
-                self.message = 'X'
+        class C0:
+            pass
 
-        class Y:
-            def __init__(self):
-                self.message = 'Y'
+        class C1_0(C0):
+            pass
 
-        self.X = X
-        self.Y = Y
+        class C2_0(C0):
+            pass
+
+        class C3_12(C1_0, C2_0):
+            pass
+
+        class C4_2(C2_0):
+            pass
+
+        class C5_1(C1_0):
+            pass
+
+        class Cobj_obj(object):
+            pass
+
+        class Cobj2_Cojb(Cobj_obj):
+            pass
+
+        self.C0 = C0
+        self.C1_0 = C1_0
+        self.C2_0 = C2_0
+        self.C3_12 = C3_12
+        self.C4_2 = C4_2
+        self.C5_1 = C5_1
+        self.Cobj_obj = Cobj_obj
+        self.Cobj2_Cojb = Cobj2_Cojb
 
     def test_isinstance(self):
-        x = self.X()
-        isInstancePPL(x, self.X)
+        self.assertTrue(isInstancePPL(self.C0(), self.C0))
+        self.assertTrue(isInstancePPL(self.C1_0(), self.C0))
+        self.assertTrue(isInstancePPL(self.C2_0(), self.C0))
+        self.assertTrue(isInstancePPL(self.C1_0(), self.C1_0))
+        self.assertTrue(isInstancePPL(self.C2_0(), self.C2_0))
+
+        self.assertTrue(isInstancePPL(self.C3_12(), self.C0))
+        self.assertTrue(isInstancePPL(self.C3_12(), self.C1_0))
+        self.assertTrue(isInstancePPL(self.C3_12(), self.C2_0))
+        self.assertFalse(isInstancePPL(self.C3_12(), self.C4_2))
+
+        self.assertFalse(isInstancePPL(self.C4_2(), self.C1_0))
+        self.assertTrue(isInstancePPL(self.C3_12(), self.C0))
+
+        self.assertFalse(isInstancePPL(self.C5_1(), self.C3_12))
+
+        self.assertTrue(isInstancePPL(self.Cobj_obj(), object))
+        self.assertTrue(isInstancePPL(self.Cobj2_Cojb(), object))
+        self.assertTrue(isInstancePPL(self.Cobj2_Cojb(), self.Cobj_obj))
+        self.assertFalse(isInstancePPL(self.C0(), object))
+        self.assertFalse(isInstancePPL(self.C5_1(), object))
 
 
 if __name__ == '__main__':

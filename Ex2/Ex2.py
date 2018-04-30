@@ -4,8 +4,8 @@ from math import sqrt
 
 class ComplexNum:
     def __init__(self, re, im):
-        ComplexNum.__assert_type(isinstance(re, (float, int)), "Real number is not a number")
-        ComplexNum.__assert_type(isinstance(im, (float, int)), "Imaginary number is not a number")
+        assert_type(isinstance(re, (float, int)), "Real number is not a number")
+        assert_type(isinstance(im, (float, int)), "Imaginary number is not a number")
         self._re = re
         self._im = im
 
@@ -25,11 +25,11 @@ class ComplexNum:
         return "{0}{1}{2}".format(re_str, sign, im_str)
 
     def __eq__(self, other):
-        ComplexNum.__assert_type(isinstance(other, ComplexNum), "Complex comparison only defined for Complex Numbers.")
+        assert_type(isinstance(other, ComplexNum), "Complex comparison only defined for Complex Numbers.")
         return self.re() == other.re() and self.im() == other.im()
 
     def __add__(self, other):
-        ComplexNum.__assert_type(isinstance(other, ComplexNum), "Complex addition only defined for Complex Numbers.")
+        assert_type(isinstance(other, ComplexNum), "Complex addition only defined for Complex Numbers.")
         re_sum = self.re() + other.re()
         im_sum = self.im() + other.im()
         return ComplexNum(re=re_sum, im=im_sum)
@@ -38,11 +38,12 @@ class ComplexNum:
         return ComplexNum(-self.re(), -self.im())
 
     def __sub__(self, other):
-        ComplexNum.__assert_type(isinstance(other, ComplexNum), "Complex subtraction only defined for Complex Numbers.")
+        assert_type(isinstance(other, ComplexNum), "Complex subtraction only defined for Complex Numbers.")
         return self + (-other)
 
     def __mul__(self, other):
-        ComplexNum.__assert_type(isinstance(other, ComplexNum), "Complex multiplication only defined for Complex Numbers.")
+        assert_type(isinstance(other, ComplexNum),
+                    "Complex multiplication only defined for Complex Numbers.")
         re_mul = self.re() * other.re() - self.im() * other.im()
         im_mul = self.re() * other.im() + self.im() * other.re()
         return ComplexNum(re=re_mul, im=im_mul)
@@ -66,18 +67,24 @@ class ComplexNum:
     def conjugate(self):
         return ComplexNum(self.re(), -self.im())
 
-    @staticmethod
-    def __assert_type(condition, message):
-        if not condition:
-            raise TypeError(message)
-
 
 # endregion
 
 # region Q2
 def isInstancePPL(object1, classInfo):
-    current = object1
-    while current.__class__ is not classInfo:
-        current = current.__bases__
+    def isInstanceRecursive(obj_class, class_info):
+        if obj_class is class_info:
+            return True
+        for base in obj_class.__bases__:
+            if isInstanceRecursive(base, class_info):
+                return True
+        return False
+
+    # ToDo add assertion for classInfo
+    return isInstanceRecursive(obj_class=object1.__class__, class_info=classInfo)
+
 
 # endregion
+def assert_type(condition, message):
+    if not condition:
+        raise TypeError(message)
