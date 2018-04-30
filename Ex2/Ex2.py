@@ -84,8 +84,7 @@ def isInstanceRecursive(obj_class, class_info):
 
 def isInstancePPL(object1, classInfo):
     assert_type(object1 is not None, "Object must not be None")
-    assert_type(type(classInfo) is types.ClassType or type(classInfo) is types.TypeType,
-                "ClassInfo must be classobj or type type")
+    assert_type(type(classInfo) is types.ClassType or type(classInfo) is types.TypeType, "ClassInfo must be classobj or type type")
     return isInstanceRecursive(obj_class=object1.__class__, class_info=classInfo) > 0
 
 
@@ -113,6 +112,28 @@ def numSubclassPPL(class_class, classInfo):
 
 
 # endregion
+
+# region Q3
+def count_if(lst, func):
+    return len(filter(func, lst))
+
+
+def for_all(lst, apply, pred):
+    applied = map(apply, lst)
+    return len(filter(pred, applied)) == len(lst)
+
+
+def for_all_red(lst, apply, pred):
+    reduced = reduce(apply, lst)
+    return len(filter(pred, [reduced])) > 0
+
+
+def there_exists(lst, n, pred):
+    return len(filter(pred, lst)) >= n
+
+
+# endregion
+
 def assert_type(condition, message):
     if not condition:
         raise TypeError(message)

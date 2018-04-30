@@ -204,5 +204,18 @@ class TestInheritance(unittest.TestCase):
         self.assertEqual(numSubclassPPL(self.C5_1, object), 0)
 
 
+class TestFunctions(unittest.TestCase):
+    def test_count_if(self):
+        self.assertEqual(count_if([1, 0, 8], lambda x: x > 2), 1)
+        self.assertEqual(count_if([1, 1, 8], lambda x: x == 1), 2)
+
+    def test_for_all(self):
+        self.assertFalse(for_all([1, 0, 8], lambda x: x * 2, lambda x: x > 0))
+        self.assertTrue(for_all([1, 1, 8], lambda x: x, lambda x: x > 0))
+
+    def test_for_all_red(self):
+        self.assertTrue(for_all_red([1, 1, 8], lambda x, y: x * y, lambda x: x > 7))
+
+
 if __name__ == '__main__':
     unittest.main()
