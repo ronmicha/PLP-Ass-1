@@ -390,20 +390,135 @@ class TestInheritance(unittest.TestCase):
 
 class TestFunctions(unittest.TestCase):
     def test_count_if(self):
+        def positive(x):
+            return x > 0
+
         self.assertEqual(count_if([1, 0, 8], lambda x: x > 2), 1)
         self.assertEqual(count_if([1, 1, 8], lambda x: x == 1), 2)
         self.assertEqual(count_if([1, 1, "a", "b"], lambda x: x == 1), 2)
         self.assertEqual(count_if([], lambda x: x == 0), 0)
+        self.assertEqual(count_if([1, 2, 3], lambda x: x == 0), 0)
+
+        self.assertEqual(count_if([1, 0, 8], positive), 2)
+        self.assertEqual(count_if([1, 1, 8], positive), 3)
+        self.assertEqual(count_if([], positive), 0)
+        self.assertEqual(count_if([-1, -2, -3], positive), 0)
+
         with self.assertRaises(TypeError):
-            self.assertEqual(count_if(None, None), 0)
+            self.assertEqual(count_if(None, positive), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(count_if([3], 3), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(count_if([3], None), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(count_if(3, positive), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(count_if("a", positive), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(count_if({"1": 1}, positive), 1)
+        with self.assertRaises(TypeError):
+            self.assertEqual(count_if((0, 1, 2), positive), 2)
+        with self.assertRaises(TypeError):
+            self.assertEqual(count_if([{"3": 3}, {"4": 4}], lambda x: x + 5), 2)
 
     def test_for_all(self):
+        def positive(x):
+            return x > 0
+
+        def minus(x):
+            return -x
+
         self.assertTrue(for_all([1, 1, 8], lambda x: x, lambda x: x > 0))
         self.assertTrue(for_all([8, 3, 8, 4, 58, 3], lambda x: x * 2, lambda x: x % 2 == 0))
         self.assertFalse(for_all([1, 0, 8], lambda x: x * 2, lambda x: x > 0))
 
+        self.assertTrue(for_all([-11, -1, -8], minus, positive))
+        self.assertFalse(for_all([8, 3, 8, 4, 58, 3], minus, positive))
+        self.assertFalse(for_all([1, 0, 8], minus, positive))
+
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all(None, lambda x: x, lambda x: x > 0), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all([3, 5], None, lambda x: x > 0), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all([3, 5], lambda x: x, None), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all([3, 5], 3, lambda x: x > 0), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all([3, 5], lambda x: x, 3), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all(3, minus, positive), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all({"3": 3}, minus, positive), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all((3, 4), minus, positive), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all_red([{"3": 3}, {"3": 5}], minus, positive), 0)
+
     def test_for_all_red(self):
+        def positive(x):
+            return x > 0
+
+        def plus(x, y):
+            return x + y
+
         self.assertTrue(for_all_red([1, 1, 8], lambda x, y: x * y, lambda x: x > 7))
+        self.assertFalse(for_all_red([1, 3, 5], lambda x, y: x * y, lambda x: x / 2 == 0))
+        self.assertTrue(for_all_red([-10, 5, 7], plus, positive))
+        self.assertFalse(for_all_red([-10, -5, 7], plus, positive))
+
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all_red(None, lambda x, y: x * y, lambda x: x > 7), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all_red([3, 5], None, lambda x: x > 7), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all_red([3, 5], lambda x, y: x * y, None), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all_red(3, 3, positive), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all_red(3, plus, 3), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all_red(3, plus, positive), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all_red({"3": 3}, plus, positive), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all_red((3, 4), plus, positive), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(for_all_red([{"3": 3}, {"3": 5}], plus, positive), 0)
+
+    def test_there_exists(self):
+        def positive(x):
+            return x > 0
+
+        self.assertTrue(there_exists([5, 3, 10], 3, positive))
+        self.assertTrue(there_exists([5, 3, 10], 3, lambda x: x > 0))
+        self.assertTrue(there_exists([5, 3, 10], 0, lambda x: x > 0))
+        self.assertTrue(there_exists([5, 3, 10], 2, positive))
+        self.assertTrue(there_exists([5, 3, 10], 2.5, positive))
+        self.assertFalse(there_exists([5, 3, 10], 4, positive))
+        self.assertFalse(there_exists([5, 3, 2], 5, lambda x: True))
+        self.assertTrue(there_exists([5, 3, 2], 2, lambda x: True))
+
+        with self.assertRaises(TypeError):
+            self.assertEqual(there_exists(None, 5, lambda x: x > 7), False)
+        with self.assertRaises(TypeError):
+            self.assertEqual(there_exists([5], None, lambda x: x > 7), False)
+        with self.assertRaises(TypeError):
+            self.assertEqual(there_exists([5], 5, None), False)
+        with self.assertRaises(TypeError):
+            self.assertEqual(there_exists([5], -3, lambda x: x > 7), False)
+        with self.assertRaises(TypeError):
+            self.assertEqual(there_exists([5], "a", lambda x: x > 7), False)
+        with self.assertRaises(TypeError):
+            self.assertEqual(there_exists([5], 4, 5), 0)
+        with self.assertRaises(TypeError):
+            self.assertEqual(there_exists(5, 5, lambda x: x > 7), False)
+        with self.assertRaises(TypeError):
+            self.assertEqual(there_exists((5, 4), 5, lambda x: x > 7), False)
+        with self.assertRaises(TypeError):
+            self.assertEqual(there_exists({"5": 5}, 5, lambda x: x > 7), False)
+        with self.assertRaises(TypeError):
+            self.assertEqual(there_exists("5", 5, lambda x: x > 7), False)
 
 
 if __name__ == '__main__':
