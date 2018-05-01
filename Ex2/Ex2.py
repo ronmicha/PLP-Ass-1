@@ -87,7 +87,8 @@ def isInstanceRecursive(obj_class, class_info):
 
 def isInstancePPL(object1, classInfo):
     assert_type(object1 is not None, "Object must not be None")
-    assert_type(type(classInfo) is types.ClassType or type(classInfo) is types.TypeType, "ClassInfo must be classobj or type type")
+    assert_type(type(classInfo) is types.ClassType or type(classInfo) is types.TypeType,
+                "ClassInfo must be classobj or type type")
     return isInstanceRecursive(obj_class=object1.__class__, class_info=classInfo) > 0
 
 
@@ -126,7 +127,8 @@ def count_if(lst, func):
 
 def for_all(lst, apply, pred):
     assert_type(isinstance(lst, collections.Iterable), "Passed object must be iterable")
-    assert_type(isinstance(apply, types.FunctionType) or isinstance(pred, types.FunctionType), "Passed functions must be of type function")
+    assert_type(isinstance(apply, types.FunctionType) and isinstance(pred, types.FunctionType),
+                "Passed functions must be of type function")
 
     applied = map(apply, lst)
     return len(filter(pred, applied)) == len(lst)
@@ -134,7 +136,8 @@ def for_all(lst, apply, pred):
 
 def for_all_red(lst, apply, pred):
     assert_type(isinstance(lst, collections.Iterable), "Passed object must be iterable")
-    assert_type(isinstance(apply, types.FunctionType) or isinstance(pred, types.FunctionType), "Passed functions must be of type function")
+    assert_type(isinstance(apply, types.FunctionType) and isinstance(pred, types.FunctionType),
+                "Passed functions must be of type function")
 
     reduced = reduce(apply, lst)
     return len(filter(pred, [reduced])) > 0
@@ -143,6 +146,7 @@ def for_all_red(lst, apply, pred):
 def there_exists(lst, n, pred):
     assert_type(isinstance(lst, collections.Iterable), "Passed object must be iterable")
     assert_type(isinstance(pred, types.FunctionType), "Passed function must be of type function")
+    assert_type(isinstance(n, (float, int)), "n must be a non-negative number")
     assert_type(n >= 0, "n must be a non-negative number")
 
     return len(filter(pred, lst)) >= n
