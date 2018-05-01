@@ -148,7 +148,7 @@ class TestComplexNum(unittest.TestCase):
 
 class TestInheritance(unittest.TestCase):
     def setUp(self):
-        class C0:
+        class C0(object):
             pass
 
         class C1_0(C0):
@@ -201,8 +201,8 @@ class TestInheritance(unittest.TestCase):
         self.assertTrue(isInstancePPL(self.Cobj_obj(), object))
         self.assertTrue(isInstancePPL(self.Cobj2_Cojb(), object))
         self.assertTrue(isInstancePPL(self.Cobj2_Cojb(), self.Cobj_obj))
-        self.assertFalse(isInstancePPL(self.C0(), object))
-        self.assertFalse(isInstancePPL(self.C5_1(), object))
+        self.assertTrue(isInstancePPL(self.C0(), object))
+        self.assertTrue(isInstancePPL(self.C5_1(), object))
 
     def test_isinstance_variables(self):
         with self.assertRaises(TypeError):
@@ -238,10 +238,10 @@ class TestInheritance(unittest.TestCase):
         self.assertEqual(numInstancePPL(self.Cobj_obj(), object), 2)
         self.assertEqual(numInstancePPL(self.Cobj2_Cojb(), object), 3)
         self.assertEqual(numInstancePPL(self.Cobj2_Cojb(), self.Cobj_obj), 2)
-        self.assertEqual(numInstancePPL(self.C0(), object), 0)
-        self.assertEqual(numInstancePPL(self.C5_1(), object), 0)
+        self.assertEqual(numInstancePPL(self.C0(), object), 2)
+        self.assertEqual(numInstancePPL(self.C5_1(), object), 4)
 
-    def test_isinstance_classes(self):
+    def test_issubclass(self):
         self.assertTrue(isSubclassPPL(self.C0, self.C0))
         self.assertTrue(isSubclassPPL(self.C1_0, self.C0))
         self.assertTrue(isSubclassPPL(self.C2_0, self.C0))
@@ -261,8 +261,8 @@ class TestInheritance(unittest.TestCase):
         self.assertTrue(isSubclassPPL(self.Cobj_obj, object))
         self.assertTrue(isSubclassPPL(self.Cobj2_Cojb, object))
         self.assertTrue(isSubclassPPL(self.Cobj2_Cojb, self.Cobj_obj))
-        self.assertFalse(isSubclassPPL(self.C0, object))
-        self.assertFalse(isSubclassPPL(self.C5_1, object))
+        self.assertTrue(isSubclassPPL(self.C0, object))
+        self.assertTrue(isSubclassPPL(self.C5_1, object))
 
         self.assertTrue(isSubclassPPL(type(self.C0()), self.C0))
         self.assertTrue(isSubclassPPL(type(self.C1_0()), self.C0))
@@ -283,10 +283,32 @@ class TestInheritance(unittest.TestCase):
         self.assertTrue(isSubclassPPL(type(self.Cobj_obj()), object))
         self.assertTrue(isSubclassPPL(type(self.Cobj2_Cojb()), object))
         self.assertTrue(isSubclassPPL(type(self.Cobj2_Cojb()), self.Cobj_obj))
-        self.assertFalse(isSubclassPPL(type(self.C0()), object))
-        self.assertFalse(isSubclassPPL(type(self.C5_1()), object))
+        self.assertTrue(isSubclassPPL(type(self.C0()), object))
+        self.assertTrue(isSubclassPPL(type(self.C5_1()), object))
 
-    def test_isinstance_classes_num(self):
+        self.assertTrue(isSubclassPPL(self.C0().__class__, self.C0))
+        self.assertTrue(isSubclassPPL(self.C1_0().__class__, self.C0))
+        self.assertTrue(isSubclassPPL(self.C2_0().__class__, self.C0))
+        self.assertTrue(isSubclassPPL(self.C1_0().__class__, self.C1_0))
+        self.assertTrue(isSubclassPPL(self.C2_0().__class__, self.C2_0))
+
+        self.assertTrue(isSubclassPPL(self.C3_12().__class__, self.C0))
+        self.assertTrue(isSubclassPPL(self.C3_12().__class__, self.C1_0))
+        self.assertTrue(isSubclassPPL(self.C3_12().__class__, self.C2_0))
+        self.assertFalse(isSubclassPPL(self.C3_12().__class__, self.C4_2))
+
+        self.assertFalse(isSubclassPPL(self.C4_2().__class__, self.C1_0))
+        self.assertTrue(isSubclassPPL(self.C3_12().__class__, self.C0))
+
+        self.assertFalse(isSubclassPPL(self.C5_1().__class__, self.C3_12))
+
+        self.assertTrue(isSubclassPPL(self.Cobj_obj().__class__, object))
+        self.assertTrue(isSubclassPPL(self.Cobj2_Cojb().__class__, object))
+        self.assertTrue(isSubclassPPL(self.Cobj2_Cojb().__class__, self.Cobj_obj))
+        self.assertTrue(isSubclassPPL(self.C0().__class__, object))
+        self.assertTrue(isSubclassPPL(self.C5_1().__class__, object))
+
+    def test_issubclass_num(self):
         self.assertEqual(numSubclassPPL(self.C0, self.C0), 1)
         self.assertEqual(numSubclassPPL(self.C1_0, self.C0), 2)
         self.assertEqual(numSubclassPPL(self.C2_0, self.C0), 2)
@@ -301,8 +323,8 @@ class TestInheritance(unittest.TestCase):
         self.assertEqual(numSubclassPPL(self.Cobj_obj, object), 2)
         self.assertEqual(numSubclassPPL(self.Cobj2_Cojb, object), 3)
         self.assertEqual(numSubclassPPL(self.Cobj2_Cojb, self.Cobj_obj), 2)
-        self.assertEqual(numSubclassPPL(self.C0, object), 0)
-        self.assertEqual(numSubclassPPL(self.C5_1, object), 0)
+        self.assertEqual(numSubclassPPL(self.C0, object), 2)
+        self.assertEqual(numSubclassPPL(self.C5_1, object), 4)
 
         self.assertEqual(numSubclassPPL(type(self.C0()), self.C0), 1)
         self.assertEqual(numSubclassPPL(type(self.C1_0()), self.C0), 2)
@@ -318,8 +340,25 @@ class TestInheritance(unittest.TestCase):
         self.assertEqual(numSubclassPPL(type(self.Cobj_obj()), object), 2)
         self.assertEqual(numSubclassPPL(type(self.Cobj2_Cojb()), object), 3)
         self.assertEqual(numSubclassPPL(type(self.Cobj2_Cojb()), self.Cobj_obj), 2)
-        self.assertEqual(numSubclassPPL(type(self.C0()), object), 0)
-        self.assertEqual(numSubclassPPL(type(self.C5_1()), object), 0)
+        self.assertEqual(numSubclassPPL(type(self.C0()), object), 2)
+        self.assertEqual(numSubclassPPL(type(self.C5_1()), object), 4)
+
+        self.assertEqual(numSubclassPPL(self.C0().__class__, self.C0), 1)
+        self.assertEqual(numSubclassPPL(self.C1_0().__class__, self.C0), 2)
+        self.assertEqual(numSubclassPPL(self.C2_0().__class__, self.C0), 2)
+        self.assertEqual(numSubclassPPL(self.C1_0().__class__, self.C1_0), 1)
+        self.assertEqual(numSubclassPPL(self.C2_0().__class__, self.C2_0), 1)
+        self.assertEqual(numSubclassPPL(self.C3_12().__class__, self.C0), 3)
+        self.assertEqual(numSubclassPPL(self.C3_12().__class__, self.C1_0), 2)
+        self.assertEqual(numSubclassPPL(self.C3_12().__class__, self.C2_0), 2)
+        self.assertEqual(numSubclassPPL(self.C3_12().__class__, self.C4_2), 0)
+        self.assertEqual(numSubclassPPL(self.C4_2().__class__, self.C1_0), 0)
+        self.assertEqual(numSubclassPPL(self.C5_1().__class__, self.C3_12), 0)
+        self.assertEqual(numSubclassPPL(self.Cobj_obj().__class__, object), 2)
+        self.assertEqual(numSubclassPPL(self.Cobj2_Cojb().__class__, object), 3)
+        self.assertEqual(numSubclassPPL(self.Cobj2_Cojb().__class__, self.Cobj_obj), 2)
+        self.assertEqual(numSubclassPPL(self.C0().__class__, object), 2)
+        self.assertEqual(numSubclassPPL(self.C5_1().__class__, object), 4)
 
 
 class TestFunctions(unittest.TestCase):
