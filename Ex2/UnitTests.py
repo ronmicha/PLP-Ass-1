@@ -520,6 +520,50 @@ class TestFunctions(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.assertEqual(there_exists("5", 5, lambda x: x > 7), False)
 
+    def test_incompatible_functions(self):
+        # The point of this test is to check what happens when the given function doesn't match
+        # The type in the collection
+        # https://moodle2.bgu.ac.il/moodle/mod/forum/discuss.php?d=259419
+        def string_modify(x):
+            return x + "_str"
+
+        def string_check(x):
+            return len(x + 'a') >= 2
+
+        def number_modify(x):
+            return x + 1
+
+        def number_check(x):
+            return x + 1 > 0
+
+        def list_modify(x):
+            return x.append(1)
+
+        def list_check(x):
+            return x.get(0) is not None
+
+        strings = ['a', 'b', 'c']
+        numbers = [1, 2, 3]
+        lists = [[1, 2], ['1', '2'], [1, '2']]
+
+        combined = strings + numbers + lists
+        # Should return 3?
+        self.assertEqual(count_if(combined, string_check), 3)
+        self.assertEqual(count_if(combined, number_check), 3)
+        self.assertEqual(count_if(combined, list_check), 3)
+
+        self.assertFalse(for_all(combined, string_modify, string_check))
+        self.assertFalse(for_all(combined, number_modify, number_check))
+        self.assertFalse(for_all(combined, string_modify, number_check))
+
+        self.assertFalse(for_all_red(combined, string_modify, string_check))
+        self.assertFalse(for_all_red(combined, number_modify, number_check))
+        self.assertFalse(for_all_red(combined, string_modify, number_check))
+
+        self.assertTrue(there_exists(combined, 3, string_check))
+        self.assertTrue(there_exists(combined, 3, number_check))
+        self.assertTrue(there_exists(combined, 3, list_check))
+
 
 if __name__ == '__main__':
     unittest.main()

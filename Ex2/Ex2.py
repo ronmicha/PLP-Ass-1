@@ -129,18 +129,22 @@ def for_all(lst, apply, pred):
     assert_type(isinstance(lst, list), "Passed object must be iterable")
     assert_type(isinstance(apply, types.FunctionType) and isinstance(pred, types.FunctionType),
                 "Passed functions must be of type function")
-
-    applied = map(apply, lst)
-    return len(filter(pred, applied)) == len(lst)
+    try:
+        applied = map(apply, lst)
+        return len(filter(pred, applied)) == len(lst)
+    except Exception:
+        return False
 
 
 def for_all_red(lst, apply, pred):
     assert_type(isinstance(lst, list), "Passed object must be iterable")
     assert_type(isinstance(apply, types.FunctionType) and isinstance(pred, types.FunctionType),
                 "Passed functions must be of type function")
-
-    reduced = reduce(apply, lst)
-    return len(filter(pred, [reduced])) > 0
+    try:
+        reduced = reduce(apply, lst)
+        return len(filter(pred, [reduced])) > 0
+    except Exception:
+        return False
 
 
 def there_exists(lst, n, pred):
