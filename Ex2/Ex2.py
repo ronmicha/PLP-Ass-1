@@ -124,7 +124,7 @@ def count_if(lst, func):
     try:
         return len(filter(func, lst))
     except:
-        return -1
+        return 0
 
 
 def for_all(lst, apply, pred):
