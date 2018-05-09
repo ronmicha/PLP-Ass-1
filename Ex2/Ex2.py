@@ -119,19 +119,19 @@ def numSubclassPPL(class_class, classInfo):
 
 # region Q3
 def count_if(lst, func):
-    assert_type(isinstance(lst, list), "Passed object must be of type list")
-    assert_type(isinstance(func, types.FunctionType), "Passed function must be of type function")
     try:
+        assert_type(isinstance(lst, list), "Passed object must be of type list")
+        assert_type(isinstance(func, types.FunctionType), "Passed function must be of type function")
         return len(filter(func, lst))
     except:
         return 0
 
 
 def for_all(lst, apply, pred):
-    assert_type(isinstance(lst, list), "Passed object must be of type list")
-    assert_type(isinstance(apply, types.FunctionType) and isinstance(pred, types.FunctionType),
-                "Passed functions must be of type function")
     try:
+        assert_type(isinstance(lst, list), "Passed object must be of type list")
+        assert_type(isinstance(apply, types.FunctionType) and isinstance(pred, types.FunctionType),
+                    "Passed functions must be of type function")
         applied = map(apply, lst)
         return len(filter(pred, applied)) == len(lst)
     except:
@@ -139,10 +139,10 @@ def for_all(lst, apply, pred):
 
 
 def for_all_red(lst, apply, pred):
-    assert_type(isinstance(lst, list), "Passed object must be of type list")
-    assert_type(isinstance(apply, types.FunctionType) and isinstance(pred, types.FunctionType),
-                "Passed functions must be of type function")
     try:
+        assert_type(isinstance(lst, list), "Passed object must be of type list")
+        assert_type(isinstance(apply, types.FunctionType) and isinstance(pred, types.FunctionType),
+                    "Passed functions must be of type function")
         reduced = reduce(apply, lst)
         return len(filter(pred, [reduced])) > 0
     except:
@@ -150,11 +150,11 @@ def for_all_red(lst, apply, pred):
 
 
 def there_exists(lst, n, pred):
-    assert_type(isinstance(lst, list), "Passed object must be of type list")
-    assert_type(isinstance(pred, types.FunctionType), "Passed function must be of type function")
-    assert_type(isinstance(n, (float, int)), "n must be a non-negative number")
-    assert_type(n >= 0, "n must be a non-negative number")
     try:
+        assert_type(isinstance(lst, list), "Passed object must be of type list")
+        assert_type(isinstance(pred, types.FunctionType), "Passed function must be of type function")
+        assert_type(isinstance(n, (float, int)), "n must be a non-negative number")
+        assert_type(n >= 0, "n must be a non-negative number")
         return len(filter(pred, lst)) >= n
     except:
         return False
