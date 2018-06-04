@@ -4,14 +4,13 @@ import numpy as np
 import pandas as pd
 
 
+# https://stackoverflow.com/questions/45835993/groupby-and-reduce-pandas-dataframes-with-numpy-arrays-as-entries
 def create_user_profiles(ratings_df, output_csv_path):
-    # https://stackoverflow.com/questions/45835993/groupby-and-reduce-pandas-dataframes-with-numpy-arrays-as-entries
-
-    # Code below is not good, just a direction to solution
     user_profiles_df = pd.DataFrame(columns=["userId", "movieId", "rating"])
-    user_profiles_df["userId"] = ratings_df["userId"]
-    user_profiles_df["movieId"] = ratings_df.groupby("userId")["movieId"].apply(np.hstack)  # .to_frame().reset_index()
+    user_profiles_df["userId"] = ratings_df["userId"].unique()
+    user_profiles_df["movieId"] = ratings_df.groupby("userId")["movieId"].apply(np.hstack)
     user_profiles_df["rating"] = ratings_df.groupby("userId")["rating"].apply(np.hstack)
+    user_profiles_df.to_csv(output_csv_path + r"user profiles.csv", index=False)
 
 
 def create_item_profile(ratings_df, output_csv_path):
@@ -28,8 +27,8 @@ if __name__ == '__main__':
         # assert os.path.isdir(sys.argv[4]), "Item Profiles directory is invalid or doesn't exist"
 
         ratings_path = r"./ratings.csv"
-        user_profiles_csv_path = r"./user profiles.csv"
-        items_profiles_csv_path = r"./items profiles.csv"
+        user_profiles_csv_path = ""
+        items_profiles_csv_path = ""
 
         ratings_df = pd.read_csv(ratings_path)
         create_user_profiles(ratings_df, user_profiles_csv_path)
