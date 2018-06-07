@@ -6,28 +6,32 @@ import pandas as pd
 
 # https://stackoverflow.com/questions/45835993/groupby-and-reduce-pandas-dataframes-with-numpy-arrays-as-entries
 # problems with this solution:
-# 1. Output values are not delimited with comma
-# 2. Long output values are cut off or '...'
-# 3. Column order is arbitrary (easy fix)
+# 1. Output values are not delimited with comma - Fixed
+# 2. Long output values are cut off or '...' - Fixed
+# 3. Column order is arbitrary (easy fix) - Fixed
 
 def create_user_profiles(ratings_df, output_directory):
     ratings_df = ratings_df.sort_values("userId")
+    ratings_df['movieId'] = ratings_df['movieId'].astype('int32')
     user_profiles_df = pd.DataFrame({
         "userId": ratings_df["userId"].unique(),
-        "movieIds": ratings_df.groupby("userId")["movieId"].apply(np.hstack).values,
-        "ratings": ratings_df.groupby("userId")["rating"].apply(np.hstack).values
+        "movieIds": ratings_df.groupby("userId")["movieId"].apply(list),
+        "ratings": ratings_df.groupby("userId")["rating"].apply(list)
     })
-    user_profiles_df.to_csv(output_directory + r"user profiles.csv", index=False)
+    user_profiles_df.to_csv(output_directory + r"user profiles.csv", index=False, header=True,
+                            columns=['userId', 'movieIds', 'ratings'])
 
 
 def create_item_profile(ratings_df, output_directory):
     ratings_df = ratings_df.sort_values("movieId")
+    ratings_df['userId'] = ratings_df['userId'].astype('int32')
     item_profiles_df = pd.DataFrame({
         "movieId": ratings_df["movieId"].unique(),
-        "userIds": ratings_df.groupby("movieId")["userId"].apply(np.hstack).values,
-        "ratings": ratings_df.groupby("movieId")["rating"].apply(np.hstack).values
+        "userIds": ratings_df.groupby("movieId")["userId"].apply(list),
+        "ratings": ratings_df.groupby("movieId")["rating"].apply(list)
     })
-    item_profiles_df.to_csv(output_directory + r"item profiles.csv", index=False)
+    item_profiles_df.to_csv(output_directory + r"item profiles.csv", index=False, header=True,
+                            columns=['movieId', 'userIds', 'ratings'])
 
 
 if __name__ == '__main__':
