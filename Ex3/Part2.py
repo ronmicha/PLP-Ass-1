@@ -15,14 +15,19 @@ RATING_COL = 'rating'
 def get_average_rating(st, user_cluster_id, item_cluster_id):
     users_in_cluster = users_by_cluster[user_cluster_id]
     items_in_cluster = items_by_cluster[item_cluster_id]
-    return st.loc[st[MOVIE_ID_COL].isin(items_in_cluster) & st[USER_ID_COL].isin(users_in_cluster)][RATING_COL].mean()
+    relevant_ratings_series = st.loc[st[MOVIE_ID_COL].isin(items_in_cluster) & st[USER_ID_COL].isin(users_in_cluster)][
+        RATING_COL]
+    if len(relevant_ratings_series) == 0:
+        return AVG_SYSTEM_RATING
+    return relevant_ratings_series.mean()
 
 
-def get_B(st, k):
+def get_B(st, u, v, k):
+    calculate_users_and_items_by_cluster_id(k, u=u, v=v)
     b = np.empty((k, k))
-    for i in range(k):
-        for j in range(k):
-            b[i, j] = get_average_rating(st, i, j)
+    for user_cluster_id in range(k):
+        for item_cluster_id in range(k):
+            b[user_cluster_id, item_cluster_id] = get_average_rating(st, user_cluster_id, item_cluster_id)
     return b
 
 
@@ -33,13 +38,26 @@ def calculate_users_and_items_by_cluster_id(k, u, v):
     items_by_cluster = {item_cluster_id: list(np.where(v == item_cluster_id)[0]) for item_cluster_id in range(k)}
 
 
+def update_u(k, num_of_users, st, b):
+    u = np.empty(num_of_users)
+    for user_id in range(num_of_users):
+        min_distance = sys.maxint
+        for user_cluster_id in range(k):
+            # something
+
+
 def build_b_file(k=10, t=10, epsilon=0.01, ratings_path="./ratings.csv", u_path="", v_path="", b_path=""):
     rating_df = pd.read_csv(ratings_path)
     v_arr = np.array(np.random.randint(0, k, len(rating_df[MOVIE_ID_COL].unique())))
     u_arr = np.array(np.random.randint(0, k, len(rating_df[USER_ID_COL].unique())))
     st_df, sv_df = train_test_split(rating_df, test_size=0.2)
-    calculate_users_and_items_by_cluster_id(k, u=u_arr, v=v_arr)
-    b = get_B(st_df, k)
+    global AVG_SYSTEM_RATING
+    AVG_SYSTEM_RATING = st_df[RATING_COL].mean()
+
+    b_arr = get_B(st=st_df, u=u_arr, v=v_arr, k=k)
+    i = 0
+    while i < t:  # and msre is improving
+        u_arr = update_u(k=k, num_of_users=len(u_arr), st=st_df, b=b_arr)
 
 
 @app.route('/', methods=['POST'])
