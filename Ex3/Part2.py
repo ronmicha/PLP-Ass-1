@@ -1,0 +1,80 @@
+import os
+import sys
+
+import pandas as pd
+import numpy as np
+from flask import Flask, request
+from sklearn.model_selection import train_test_split
+
+app = Flask(__name__)
+MOVIE_ID_COL = 'movieId'
+USER_ID_COL = 'userId'
+RATING_COL = 'rating'
+
+
+def get_average_rating(st, user_cluster_id, item_cluster_id):
+    users_in_cluster = users_by_cluster[user_cluster_id]
+    items_in_cluster = items_by_cluster[item_cluster_id]
+    return st.loc[st[MOVIE_ID_COL].isin(items_in_cluster) & st[USER_ID_COL].isin(users_in_cluster)][RATING_COL].mean()
+
+
+def get_B(st, k):
+    b = np.empty((k, k))
+    for i in range(k):
+        for j in range(k):
+            b[i, j] = get_average_rating(st, i, j)
+    return b
+
+
+def calculate_users_and_items_by_cluster_id(k, u, v):
+    global users_by_cluster
+    users_by_cluster = {user_cluster_id: list(np.where(u == user_cluster_id)[0]) for user_cluster_id in range(k)}
+    global items_by_cluster
+    items_by_cluster = {item_cluster_id: list(np.where(v == item_cluster_id)[0]) for item_cluster_id in range(k)}
+
+
+def build_b_file(k=10, t=10, epsilon=0.01, ratings_path="./ratings.csv", u_path="", v_path="", b_path=""):
+    rating_df = pd.read_csv(ratings_path)
+    v_arr = np.array(np.random.randint(0, k, len(rating_df[MOVIE_ID_COL].unique())))
+    u_arr = np.array(np.random.randint(0, k, len(rating_df[USER_ID_COL].unique())))
+    st_df, sv_df = train_test_split(rating_df, test_size=0.2)
+    calculate_users_and_items_by_cluster_id(k, u=u_arr, v=v_arr)
+    b = get_B(st_df, k)
+
+
+@app.route('/', methods=['POST'])
+def get_recommendation():
+    assert 'n' in request.form, "Missing number of recommendations"
+    assert 'userid' in request.form, "Missing user id"
+    n = request.form['n']
+    userid = request.form['userid']
+    pass
+
+
+if __name__ == '__main__':
+    try:
+        # assert len(sys.argv) == 9, "Wrong number of arguments. Please provide 9 arguments"
+        # assert sys.argv[1] == 'ExtractCB', "Method must be ExtractCB"
+        # assert os.path.basename(
+        #     sys.argv[2]) == "ratings.csv", "Wrong input file provided. Input file must be named 'ratings.csv'"
+        # assert os.path.isfile(sys.argv[2]), "Input file path is invalid or file doesn't exist"
+        # assert isinstance(eval(sys.argv[3]), int), "K must be a number"
+        # assert not eval(sys.argv[4]) or isinstance(eval(sys.argv[4]), int), "T must be a number or None"
+        # assert not eval(sys.argv[5]) or isinstance(eval(sys.argv[5]), float), "epsilon must be a number or None"
+        # assert os.path.isdir(sys.argv[6]), "U directory is invalid or doesn't exist"
+        # assert os.path.isdir(sys.argv[7]), "V directory is invalid or doesn't exist"
+        # assert os.path.isdir(sys.argv[8]), "B directory is invalid or doesn't exist"
+        #
+        # ratings_path = sys.argv[2]
+        # k_size = int(sys.argv[3])
+        # t_size = 10 if sys.argv[4] == 'null' else int(sys.argv[4])
+        # epsilon = 0.01 if sys.argv[5] == 'null' else float(sys.argv[5])
+        # u_path = sys.argv[6]
+        # v_path = sys.argv[7]
+        # b_path = sys.argv[8]
+
+        build_b_file()
+
+        app.run()
+    except Exception as ex:
+        print "Error!", ex.message
