@@ -42,19 +42,44 @@ def calculate_users_and_items_by_cluster_id(k, u, v):
 
 def update_u(k, num_of_users, st, b):
     u = np.empty(num_of_users)
-    for user_id in range(1, num_of_users):
-        min_distance = sys.maxint
+    for user_id in range(1, num_of_users + 1):
+        min_error = sys.maxint
         min_cluster = 0
         for user_cluster_id in range(k):
-            differences_sum = st[st[USER_ID_COL] == user_id].apply(
+            error = st[st[USER_ID_COL] == user_id].apply(
                 lambda row: (row[RATING_COL] - b[user_cluster_id, int(row[MOVIE_CLUSTER_ID_COL])]) ** 2, axis=1).sum()
-            if differences_sum < min_distance:
-                min_distance = differences_sum
+            if error < min_error:
+                min_error = error
                 min_cluster = user_cluster_id
         u[user_id - 1] = min_cluster
+    return u
 
 
-def build_b_file(k=20, t=10, epsilon=0.01, ratings_path="./ratings.csv", u_path="", v_path="", b_path=""):
+def update_v(k, num_of_movies, st, b):
+    v = np.empty(num_of_movies)
+    for movie_id in range(1, num_of_movies + 1):
+        min_error = sys.maxint
+        min_cluster = 0
+        for movie_cluster_id in range(k):
+            errors_series = st[st[MOVIE_ID_COL] == movie_id].apply(
+                lambda row: (row[RATING_COL] - b[int(row[USER_CLUSTER_ID_COL]), movie_cluster_id]) ** 2, axis=1)
+            if len(errors_series) == 0:
+                break
+            error = errors_series.sum()
+            if error < min_error:
+                min_error = error
+                min_cluster = movie_cluster_id
+        v[movie_id - 1] = min_cluster
+    return v
+
+
+def get_rmse(sv, b, u, v):
+    mse = sv.apply(lambda row: (row[RATING_COL] - b[int(u[row[USER_ID_COL]]), int(v[row[MOVIE_ID_COL]])]) ** 2,
+                   axis=1).mean()
+    return mse ** 0.5
+
+
+def build_b_file(k=20, t=10, epsilon=0.01, ratings_path="./ratings.csv", u_path="./u", v_path="./v", b_path="./b"):
     rating_df = pd.read_csv(ratings_path)
     v_arr = np.array(np.random.randint(0, k, rating_df[MOVIE_ID_COL].max()))
     u_arr = np.array(np.random.randint(0, k, len(rating_df[USER_ID_COL].unique())))
@@ -65,8 +90,18 @@ def build_b_file(k=20, t=10, epsilon=0.01, ratings_path="./ratings.csv", u_path=
     st_df[MOVIE_CLUSTER_ID_COL] = st_df[MOVIE_ID_COL].apply(lambda x: v_arr[x - 1])
     b_arr = get_B(st=st_df, u=u_arr, v=v_arr, k=k)
     i = 0
-    while i < t:  # and msre is improving
+    previous_rmse = sys.maxint
+    current_rmse = 0
+    while i < t and previous_rmse - current_rmse > epsilon:
         u_arr = update_u(k=k, num_of_users=len(u_arr), st=st_df, b=b_arr)
+        b_arr = get_B(st=st_df, u=u_arr, v=v_arr, k=k)
+        v_arr = update_v(k=k, num_of_movies=len(v_arr), st=st_df, b=b_arr)
+        b_arr = get_B(st=st_df, u=u_arr, v=v_arr, k=k)
+        current_rmse = get_rmse(sv=sv_df, b=b_arr, u=u_arr, v=v_arr)
+        t = t + 1
+    np.save(u_path, u_arr)
+    np.save(v_path, v_arr)
+    np.save(b_path, b_arr)
 
 
 @app.route('/', methods=['POST'])
