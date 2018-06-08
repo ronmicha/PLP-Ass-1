@@ -1,5 +1,5 @@
-import os
 import sys
+import traceback
 
 import pandas as pd
 import numpy as np
@@ -46,8 +46,11 @@ def update_u(k, num_of_users, st, b):
         min_error = sys.maxint
         min_cluster = 0
         for user_cluster_id in range(k):
-            error = st[st[USER_ID_COL] == user_id].apply(
-                lambda row: (row[RATING_COL] - b[user_cluster_id, int(row[MOVIE_CLUSTER_ID_COL])]) ** 2, axis=1).sum()
+            error_series = st[st[USER_ID_COL] == user_id].apply(
+                lambda row: (row[RATING_COL] - b[user_cluster_id, int(row[MOVIE_CLUSTER_ID_COL])]) ** 2, axis=1)
+            if len(error_series) == 0:
+                break
+            error = error_series.sum()
             if error < min_error:
                 min_error = error
                 min_cluster = user_cluster_id
@@ -57,7 +60,7 @@ def update_u(k, num_of_users, st, b):
 
 def update_v(k, num_of_movies, st, b):
     v = np.empty(num_of_movies)
-    for movie_id in range(1, num_of_movies + 1):
+    for movie_id in st[MOVIE_ID_COL].unique():
         min_error = sys.maxint
         min_cluster = 0
         for movie_cluster_id in range(k):
@@ -74,16 +77,17 @@ def update_v(k, num_of_movies, st, b):
 
 
 def get_rmse(sv, b, u, v):
-    mse = sv.apply(lambda row: (row[RATING_COL] - b[int(u[row[USER_ID_COL]]), int(v[row[MOVIE_ID_COL]])]) ** 2,
+    mse = sv.apply(lambda row: (row[RATING_COL] - b[u[int(row[USER_ID_COL])], v[int(row[MOVIE_ID_COL])]]) ** 2,
                    axis=1).mean()
     return mse ** 0.5
 
 
 def build_b_file(k=20, t=10, epsilon=0.01, ratings_path="./ratings.csv", u_path="./u", v_path="./v", b_path="./b"):
     rating_df = pd.read_csv(ratings_path)
+    rating_df.sort_values(by='timestamp', inplace=True)
     v_arr = np.array(np.random.randint(0, k, rating_df[MOVIE_ID_COL].max()))
     u_arr = np.array(np.random.randint(0, k, len(rating_df[USER_ID_COL].unique())))
-    st_df, sv_df = train_test_split(rating_df, test_size=0.2)
+    st_df, sv_df = train_test_split(rating_df, test_size=0.2, shuffle=False)
     global AVG_SYSTEM_RATING
     AVG_SYSTEM_RATING = st_df[RATING_COL].mean()
 
@@ -142,4 +146,4 @@ if __name__ == '__main__':
 
         app.run()
     except Exception as ex:
-        print "Error!", ex
+        print "Error!", ex, traceback.print_exc()
