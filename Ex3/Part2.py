@@ -99,7 +99,7 @@ def build_b_file(k=20, t=10, epsilon=0.01, ratings_path="./ratings.csv", u_path=
     b_arr = get_B(st=st_df, u=u_arr, v=v_arr, k=k)
     i = 0
     previous_rmse = sys.maxint
-    current_rmse = 0
+    current_rmse = previous_rmse - 1 - epsilon
     while i < t and previous_rmse - current_rmse > epsilon:
         u_arr = update_u(k=k, num_of_users=len(u_arr), st=st_df, b=b_arr)
         st_df[USER_CLUSTER_ID_COL] = u_arr[st_df[USER_ID_COL].values - 1]
@@ -126,6 +126,7 @@ def get_recommendation():
 
 if __name__ == '__main__':
     try:
+        pd.set_option('mode.chained_assignment', None)
         # assert len(sys.argv) == 9, "Wrong number of arguments. Please provide 9 arguments"
         # assert sys.argv[1] == 'ExtractCB', "Method must be ExtractCB"
         # assert os.path.basename(
