@@ -42,19 +42,19 @@ def calculate_users_and_items_by_cluster_id(k, u, v):
 
 def update_u(k, num_of_users, st, b):
     u = np.empty(num_of_users)
-    for user_id in range(num_of_users):
+    for user_id in range(1, num_of_users):
         min_distance = sys.maxint
         min_cluster = 0
         for user_cluster_id in range(k):
-            s = st[[st[USER_ID_COL] == user_id]].apply(
-                lambda row: (row[RATING_COL] - b[user_cluster_id, row[MOVIE_CLUSTER_ID_COL]]) ** 2)
-            if s.sum() < min_distance:
-                min_distance = s.sum()
+            differences_sum = st[st[USER_ID_COL] == user_id].apply(
+                lambda row: (row[RATING_COL] - b[user_cluster_id, int(row[MOVIE_CLUSTER_ID_COL])]) ** 2, axis=1).sum()
+            if differences_sum < min_distance:
+                min_distance = differences_sum
                 min_cluster = user_cluster_id
         u[user_id - 1] = min_cluster
 
 
-def build_b_file(k=10, t=10, epsilon=0.01, ratings_path="./ratings.csv", u_path="", v_path="", b_path=""):
+def build_b_file(k=20, t=10, epsilon=0.01, ratings_path="./ratings.csv", u_path="", v_path="", b_path=""):
     rating_df = pd.read_csv(ratings_path)
     v_arr = np.array(np.random.randint(0, k, rating_df[MOVIE_ID_COL].max()))
     u_arr = np.array(np.random.randint(0, k, len(rating_df[USER_ID_COL].unique())))
@@ -104,4 +104,4 @@ if __name__ == '__main__':
 
         app.run()
     except Exception as ex:
-        print "Error!", ex.message
+        print "Error!", ex
