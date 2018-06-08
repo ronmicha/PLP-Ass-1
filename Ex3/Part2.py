@@ -120,20 +120,25 @@ def build_b_file(k=20, t=10, epsilon=0.01, ratings_path="./ratings.csv"):
     np.savetxt(b_path, b_arr, delimiter=',')
 
 
+@app.before_first_request
+def load_files():
+    global u_rec, v_rec, b_rec
+    u_rec = np.loadtxt(u_path, delimiter=',')
+    v_rec = np.loadtxt(v_path, delimiter=',')
+    b_rec = np.loadtxt(b_path, delimiter=',')
+
+
 def get_codebook_recoms(user_id, n):
-    u_arr = np.loadtxt(u_path, delimiter=',')
-    v_arr = np.loadtxt(v_path, delimiter=',')
-    b_arr = np.loadtxt(b_path, delimiter=',')
-    user_cluster = int(u_arr[user_id - 1])
-    movie_clusters = b_arr[user_cluster]
-    # sort cluster indices by descending ranking (best matching cluster first)
-    cluster_indices = np.argsort(movie_clusters)[::-1]
+    user_cluster = int(u_rec[user_id - 1])
+    movie_clusters = b_rec[user_cluster]
+    # get cluster indices (IDs) by descending ranking (best cluster ID first)
+    cluster_ids = np.argsort(movie_clusters)[::-1]
     recoms = []
-    for c_id in cluster_indices:
+    for c_id in cluster_ids:
         # get indices (IDs) of all movies that belong to 'c_id' cluster
-        movie_ids = np.flatnonzero(v_arr == c_id)
-        # choose first 10 movies in the cluster (random)
-        recoms += list(movie_ids[:n])
+        cluster_movie_ids = np.flatnonzero(v_rec == c_id)
+        # choose first movies in the cluster (random)
+        recoms += list(cluster_movie_ids[:n - len(recoms)])
         if len(recoms) == n:
             break
     return recoms
