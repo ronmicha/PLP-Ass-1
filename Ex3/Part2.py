@@ -161,7 +161,7 @@ def get_recommendation():
 if __name__ == '__main__':
     try:
         # pd.set_option('mode.chained_assignment', None)
-        # assert len(sys.argv) == 9, "Wrong number of arguments. Please provide 9 arguments"
+        # assert len(sys.argv) == 9, "Wrong number of arguments. Please provide 8 arguments"
         # assert sys.argv[1] == 'ExtractCB', "Method must be ExtractCB"
         # assert os.path.basename(
         #     sys.argv[2]) == "ratings.csv", "Wrong input file provided. Input file must be named 'ratings.csv'"
