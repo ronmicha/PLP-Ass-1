@@ -88,14 +88,17 @@ def build_b_file(k=20, t=10, epsilon=0.01, ratings_path="./ratings.csv", u_path=
     AVG_SYSTEM_RATING = st_df[RATING_COL].mean()
 
     st_df[MOVIE_CLUSTER_ID_COL] = st_df[MOVIE_ID_COL].apply(lambda x: v_arr[x - 1])
+    st_df[USER_CLUSTER_ID_COL] = st_df[USER_ID_COL].apply(lambda x: u_arr[x - 1])
     b_arr = get_B(st=st_df, u=u_arr, v=v_arr, k=k)
     i = 0
     previous_rmse = sys.maxint
     current_rmse = 0
     while i < t and previous_rmse - current_rmse > epsilon:
         u_arr = update_u(k=k, num_of_users=len(u_arr), st=st_df, b=b_arr)
+        st_df[USER_CLUSTER_ID_COL] = st_df[USER_ID_COL].apply(lambda x: u_arr[x - 1])
         b_arr = get_B(st=st_df, u=u_arr, v=v_arr, k=k)
         v_arr = update_v(k=k, num_of_movies=len(v_arr), st=st_df, b=b_arr)
+        st_df[MOVIE_CLUSTER_ID_COL] = st_df[MOVIE_ID_COL].apply(lambda x: v_arr[x - 1])
         b_arr = get_B(st=st_df, u=u_arr, v=v_arr, k=k)
         current_rmse = get_rmse(sv=sv_df, b=b_arr, u=u_arr, v=v_arr)
         t = t + 1
