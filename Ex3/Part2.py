@@ -1,9 +1,10 @@
+import os
+import json
 import sys
 import traceback
-
 import pandas as pd
 import numpy as np
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from sklearn.model_selection import train_test_split
 
 app = Flask(__name__)
@@ -12,6 +13,10 @@ USER_ID_COL = 'userId'
 RATING_COL = 'rating'
 USER_CLUSTER_ID_COL = 'userClusterId'
 MOVIE_CLUSTER_ID_COL = 'movieClusterId'
+
+u_path = "u.csv"
+v_path = "v.csv"
+b_path = "b.csv"
 
 
 def get_average_rating(st, user_cluster_id, item_cluster_id):
@@ -85,7 +90,7 @@ def get_rmse(sv, b, u, v):
     return mse ** 0.5
 
 
-def build_b_file(k=20, t=10, epsilon=0.01, ratings_path="./ratings.csv", u_path="./u", v_path="./v", b_path="./b"):
+def build_b_file(k=20, t=10, epsilon=0.01, ratings_path="./ratings.csv"):
     rating_df = pd.read_csv(ratings_path)
     rating_df.sort_values(by='timestamp', inplace=True)
     v_arr = np.array(np.random.randint(0, k, rating_df[MOVIE_ID_COL].max() + 1))
@@ -110,23 +115,47 @@ def build_b_file(k=20, t=10, epsilon=0.01, ratings_path="./ratings.csv", u_path=
         previous_rmse = current_rmse
         current_rmse = get_rmse(sv=sv_df, b=b_arr, u=u_arr, v=v_arr)
         i += 1
-    np.save(u_path, u_arr)
-    np.save(v_path, v_arr)
-    np.save(b_path, b_arr)
+    np.savetxt(u_path, u_arr, delimiter=',')
+    np.savetxt(v_path, v_arr, delimiter=',')
+    np.savetxt(b_path, b_arr, delimiter=',')
+
+
+def get_codebook_recoms(user_id, n):
+    u_arr = np.loadtxt(u_path, delimiter=',')
+    v_arr = np.loadtxt(v_path, delimiter=',')
+    b_arr = np.loadtxt(b_path, delimiter=',')
+    user_cluster = int(u_arr[user_id - 1])
+    movie_clusters = b_arr[user_cluster]
+    # sort cluster indices by descending ranking (best matching cluster first)
+    cluster_indices = np.argsort(movie_clusters)[::-1]
+    recoms = []
+    for c_id in cluster_indices:
+        # get indices (IDs) of all movies that belong to 'c_id' cluster
+        movie_ids = np.flatnonzero(v_arr == c_id)
+        # choose first 10 movies in the cluster (random)
+        recoms += list(movie_ids[:n])
+        if len(recoms) == n:
+            break
+    return recoms
 
 
 @app.route('/', methods=['POST'])
 def get_recommendation():
-    assert 'n' in request.form, "Missing number of recommendations"
-    assert 'userid' in request.form, "Missing user id"
-    n = request.form['n']
-    userid = request.form['userid']
-    pass
+    try:
+        data = json.loads(request.data)
+        assert 'n' in data, "Missing number of recommendations"
+        assert 'userid' in data, "Missing user ID"
+        n = int(data['n'])
+        user_id = int(data['userid'])
+        recoms = get_codebook_recoms(user_id, n)
+        return jsonify(recoms)
+    except Exception as e:
+        return repr(e), 500
 
 
 if __name__ == '__main__':
     try:
-        pd.set_option('mode.chained_assignment', None)
+        # pd.set_option('mode.chained_assignment', None)
         # assert len(sys.argv) == 9, "Wrong number of arguments. Please provide 9 arguments"
         # assert sys.argv[1] == 'ExtractCB', "Method must be ExtractCB"
         # assert os.path.basename(
@@ -143,12 +172,14 @@ if __name__ == '__main__':
         # k_size = int(sys.argv[3])
         # t_size = 10 if sys.argv[4] == 'null' else int(sys.argv[4])
         # epsilon = 0.01 if sys.argv[5] == 'null' else float(sys.argv[5])
-        # u_path = sys.argv[6]
-        # v_path = sys.argv[7]
-        # b_path = sys.argv[8]
+        # global u_path, v_path, b_path
+        # u_path = sys.argv[6] + r"u.csv"
+        # v_path = sys.argv[7] + r"v.csv"
+        # b_path = sys.argv[8] + r"b.csv"
 
-        build_b_file()
+        # build_b_file()
 
         app.run()
     except Exception as ex:
-        print "Error!", ex, traceback.print_exc()
+        print "Error!", ex
+        print traceback.print_exc()

@@ -4,12 +4,6 @@ import numpy as np
 import pandas as pd
 
 
-# https://stackoverflow.com/questions/45835993/groupby-and-reduce-pandas-dataframes-with-numpy-arrays-as-entries
-# problems with this solution:
-# 1. Output values are not delimited with comma - Fixed
-# 2. Long output values are cut off or '...' - Fixed
-# 3. Column order is arbitrary (easy fix) - Fixed
-
 def create_user_profiles(ratings_df, output_directory):
     ratings_df = ratings_df.sort_values("userId")
     ratings_df['movieId'] = ratings_df['movieId'].astype('int32')
