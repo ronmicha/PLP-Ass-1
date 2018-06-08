@@ -10,6 +10,8 @@ app = Flask(__name__)
 MOVIE_ID_COL = 'movieId'
 USER_ID_COL = 'userId'
 RATING_COL = 'rating'
+USER_CLUSTER_ID_COL = 'userClusterId'
+MOVIE_CLUSTER_ID_COL = 'movieClusterId'
 
 
 def get_average_rating(st, user_cluster_id, item_cluster_id):
@@ -42,18 +44,25 @@ def update_u(k, num_of_users, st, b):
     u = np.empty(num_of_users)
     for user_id in range(num_of_users):
         min_distance = sys.maxint
+        min_cluster = 0
         for user_cluster_id in range(k):
-            # something
+            s = st[[st[USER_ID_COL] == user_id]].apply(
+                lambda row: (row[RATING_COL] - b[user_cluster_id, row[MOVIE_CLUSTER_ID_COL]]) ** 2)
+            if s.sum() < min_distance:
+                min_distance = s.sum()
+                min_cluster = user_cluster_id
+        u[user_id - 1] = min_cluster
 
 
 def build_b_file(k=10, t=10, epsilon=0.01, ratings_path="./ratings.csv", u_path="", v_path="", b_path=""):
     rating_df = pd.read_csv(ratings_path)
-    v_arr = np.array(np.random.randint(0, k, len(rating_df[MOVIE_ID_COL].unique())))
+    v_arr = np.array(np.random.randint(0, k, rating_df[MOVIE_ID_COL].max()))
     u_arr = np.array(np.random.randint(0, k, len(rating_df[USER_ID_COL].unique())))
     st_df, sv_df = train_test_split(rating_df, test_size=0.2)
     global AVG_SYSTEM_RATING
     AVG_SYSTEM_RATING = st_df[RATING_COL].mean()
 
+    st_df[MOVIE_CLUSTER_ID_COL] = st_df[MOVIE_ID_COL].apply(lambda x: v_arr[x - 1])
     b_arr = get_B(st=st_df, u=u_arr, v=v_arr, k=k)
     i = 0
     while i < t:  # and msre is improving
