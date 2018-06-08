@@ -107,6 +107,7 @@ def build_b_file(k=20, t=10, epsilon=0.01, ratings_path="./ratings.csv", u_path=
         v_arr = update_v(k=k, num_of_movies=len(v_arr), st=st_df, b=b_arr)
         st_df[MOVIE_CLUSTER_ID_COL] = v_arr[st_df[MOVIE_ID_COL].values - 1]
         b_arr = get_B(st=st_df, u=u_arr, v=v_arr, k=k)
+        previous_rmse = current_rmse
         current_rmse = get_rmse(sv=sv_df, b=b_arr, u=u_arr, v=v_arr)
         i += 1
     np.save(u_path, u_arr)
