@@ -45,8 +45,9 @@ def update_u(k, num_of_users, st, b):
     for user_id in range(1, num_of_users + 1):
         min_error = sys.maxint
         min_cluster = 0
+        user_ratings = st[st[USER_ID_COL] == user_id]
         for user_cluster_id in range(k):
-            error_series = st[st[USER_ID_COL] == user_id].apply(
+            error_series = user_ratings.apply(
                 lambda row: (row[RATING_COL] - b[user_cluster_id, int(row[MOVIE_CLUSTER_ID_COL])]) ** 2, axis=1)
             if len(error_series) == 0:
                 break
@@ -63,8 +64,9 @@ def update_v(k, num_of_movies, st, b):
     for movie_id in st[MOVIE_ID_COL].unique():
         min_error = sys.maxint
         min_cluster = 0
+        movie_ratings = st[st[MOVIE_ID_COL] == movie_id]
         for movie_cluster_id in range(k):
-            errors_series = st[st[MOVIE_ID_COL] == movie_id].apply(
+            errors_series = movie_ratings.apply(
                 lambda row: (row[RATING_COL] - b[int(row[USER_CLUSTER_ID_COL]), movie_cluster_id]) ** 2, axis=1)
             if len(errors_series) == 0:
                 break
