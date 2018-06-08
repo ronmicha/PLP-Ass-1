@@ -88,27 +88,27 @@ def get_rmse(sv, b, u, v):
 def build_b_file(k=20, t=10, epsilon=0.01, ratings_path="./ratings.csv", u_path="./u", v_path="./v", b_path="./b"):
     rating_df = pd.read_csv(ratings_path)
     rating_df.sort_values(by='timestamp', inplace=True)
-    v_arr = np.array(np.random.randint(0, k, rating_df[MOVIE_ID_COL].max()))
+    v_arr = np.array(np.random.randint(0, k, rating_df[MOVIE_ID_COL].max() + 1))
     u_arr = np.array(np.random.randint(0, k, len(rating_df[USER_ID_COL].unique())))
     st_df, sv_df = train_test_split(rating_df, test_size=0.2, shuffle=False)
     global AVG_SYSTEM_RATING
     AVG_SYSTEM_RATING = st_df[RATING_COL].mean()
 
-    st_df[MOVIE_CLUSTER_ID_COL] = v_arr[st_df[MOVIE_ID_COL] - 1]
-    st_df[USER_CLUSTER_ID_COL] = u_arr[st_df[USER_ID_COL] - 1]
+    st_df[MOVIE_CLUSTER_ID_COL] = v_arr[st_df[MOVIE_ID_COL].values - 1]
+    st_df[USER_CLUSTER_ID_COL] = u_arr[st_df[USER_ID_COL].values - 1]
     b_arr = get_B(st=st_df, u=u_arr, v=v_arr, k=k)
     i = 0
     previous_rmse = sys.maxint
     current_rmse = 0
     while i < t and previous_rmse - current_rmse > epsilon:
         u_arr = update_u(k=k, num_of_users=len(u_arr), st=st_df, b=b_arr)
-        st_df[USER_CLUSTER_ID_COL] = u_arr[st_df[USER_ID_COL] - 1]
+        st_df[USER_CLUSTER_ID_COL] = u_arr[st_df[USER_ID_COL].values - 1]
         b_arr = get_B(st=st_df, u=u_arr, v=v_arr, k=k)
         v_arr = update_v(k=k, num_of_movies=len(v_arr), st=st_df, b=b_arr)
-        st_df[MOVIE_CLUSTER_ID_COL] = v_arr[st_df[MOVIE_ID_COL] - 1]
+        st_df[MOVIE_CLUSTER_ID_COL] = v_arr[st_df[MOVIE_ID_COL].values - 1]
         b_arr = get_B(st=st_df, u=u_arr, v=v_arr, k=k)
         current_rmse = get_rmse(sv=sv_df, b=b_arr, u=u_arr, v=v_arr)
-        t = t + 1
+        i += 1
     np.save(u_path, u_arr)
     np.save(v_path, v_arr)
     np.save(b_path, b_arr)
