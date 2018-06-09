@@ -50,10 +50,11 @@ def update_u(k, num_of_users, st, b):
     for user_id in range(1, num_of_users + 1):
         min_error = sys.maxint
         min_cluster = 0
-        user_ratings = st[st[USER_ID_COL] == user_id]
+        user_data = st[st[USER_ID_COL] == user_id]
+        user_ratings_arr = user_data[RATING_COL].values
+        movies_clusters_arr = user_data[MOVIE_CLUSTER_ID_COL].values
         for user_cluster_id in range(k):
-            error_series = (user_ratings[RATING_COL].values - b[
-                user_cluster_id, user_ratings[MOVIE_CLUSTER_ID_COL].values]) ** 2
+            error_series = (user_ratings_arr - b[user_cluster_id, movies_clusters_arr]) ** 2
             if len(error_series) == 0:
                 break
             error = error_series.sum()
@@ -69,10 +70,11 @@ def update_v(k, num_of_movies, st, b):
     for movie_id in st[MOVIE_ID_COL].unique():
         min_error = sys.maxint
         min_cluster = 0
-        movie_ratings = st[st[MOVIE_ID_COL] == movie_id]
+        movie_data = st[st[MOVIE_ID_COL] == movie_id]
+        movie_ratings_arr = movie_data[RATING_COL].values
+        user_cluster_arr = movie_data[USER_CLUSTER_ID_COL].values
         for movie_cluster_id in range(k):
-            errors_series = (movie_ratings[RATING_COL].values - b[
-                movie_ratings[USER_CLUSTER_ID_COL].values, movie_cluster_id]) ** 2
+            errors_series = (movie_ratings_arr - b[user_cluster_arr, movie_cluster_id]) ** 2
             if len(errors_series) == 0:
                 break
             error = errors_series.sum()
@@ -84,8 +86,6 @@ def update_v(k, num_of_movies, st, b):
 
 
 def get_rmse(sv, b, u, v):
-    # mse = sv.apply(lambda row: (row[RATING_COL] - b[u[int(row[USER_ID_COL])], v[int(row[MOVIE_ID_COL])]]) ** 2,
-    #                axis=1).mean()
     mse = ((sv[RATING_COL].values - b[u[sv[USER_ID_COL].values], v[sv[MOVIE_ID_COL].values]]) ** 2).mean()
     return mse ** 0.5
 
