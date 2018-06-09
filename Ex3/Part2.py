@@ -136,9 +136,9 @@ def get_codebook_recoms(user_id, n):
     recoms = []
     for c_id in cluster_ids:
         # get indices (IDs) of all movies that belong to 'c_id' cluster
-        cluster_movie_ids = np.flatnonzero(v_rec == c_id)
+        movie_ids = np.flatnonzero(v_rec == c_id) + 1
         # choose first movies in the cluster (random)
-        recoms += list(cluster_movie_ids[:n - len(recoms)])
+        recoms += list(movie_ids[:n - len(recoms)])
         if len(recoms) == n:
             break
     return recoms
