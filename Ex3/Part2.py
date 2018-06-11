@@ -197,9 +197,9 @@ if __name__ == '__main__':
         k_size = int(sys.argv[3])
         t_size = 10 if not sys.argv[4] else int(sys.argv[4])
         epsilon = 0.01 if not sys.argv[5] else float(sys.argv[5])
-        u_path = sys.argv[6] + "\\u.csv" if sys.argv[6] else "u.csv"
-        v_path = sys.argv[7] + "\\v.csv" if sys.argv[7] else "v.csv"
-        b_path = sys.argv[8] + "\\b.csv" if sys.argv[8] else "b.csv"
+        u_path = sys.argv[6] + r"\u.csv" if sys.argv[6] else "u.csv"
+        v_path = sys.argv[7] + r"\v.csv" if sys.argv[7] else "v.csv"
+        b_path = sys.argv[8] + r"\b.csv" if sys.argv[8] else "b.csv"
 
         # build_b_file(ratings_path=ratings_path, k=k_size, t=t_size, epsilon=epsilon)
 
