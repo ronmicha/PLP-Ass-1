@@ -14,10 +14,11 @@ RATING_COL = 'rating'
 USER_CLUSTER_ID_COL = 'userClusterId'
 MOVIE_CLUSTER_ID_COL = 'movieClusterId'
 
-ratings_path = "./ratings.csv"
-u_path = "u.csv"
-v_path = "v.csv"
-b_path = "b.csv"
+
+# ratings_path = "./ratings.csv"
+# u_path = "\\"
+# v_path = "\\"
+# b_path = "\\"
 
 
 def get_average_rating(st, user_cluster_id, item_cluster_id):
@@ -91,7 +92,7 @@ def get_rmse(sv, b, u, v):
     return mse ** 0.5
 
 
-def build_b_file(k=20, t=10, epsilon=0.01, ratings_path="./ratings.csv"):
+def build_b_file(ratings_path, k=20, t=10, epsilon=0.01):
     rating_df = pd.read_csv(ratings_path)
     rating_df.sort_values(by='timestamp', inplace=True)
     v_arr = np.array(np.random.randint(0, k, rating_df[MOVIE_ID_COL].max() + 1))
@@ -133,14 +134,14 @@ def load_files():
 def get_codebook_recoms(user_id, n):
     user_cluster = int(u_rec[user_id - 1])
     movie_clusters = b_rec[user_cluster]
-    movies_watched = ratings[ratings[USER_ID_COL] == user_id][MOVIE_ID_COL].tolist()
+    movies_watched = ratings[ratings[USER_ID_COL] == user_id][MOVIE_ID_COL].values
     # get cluster indices (IDs) by descending ranking (best cluster ID first)
     cluster_ids = np.argsort(movie_clusters)[::-1]
     recoms = []
     for c_id in cluster_ids:
         # get indices (IDs) of all movies that belong to 'c_id' cluster
         movie_ids = np.flatnonzero(v_rec == c_id) + 1
-        potential_recoms = [movie for movie in movie_ids if movie not in movies_watched]
+        potential_recoms = np.setdiff1d(movie_ids, movies_watched)
         # choose first movies in the cluster (random)
         recoms += list(potential_recoms[:n - len(recoms)])
         if len(recoms) == n:
@@ -166,28 +167,44 @@ if __name__ == '__main__':
     try:
         pd.set_option('mode.chained_assignment', None)
         assert len(sys.argv) == 9, "Wrong number of arguments. Please provide 8 arguments"
-        assert sys.argv[1] == 'ExtractCB', "Method must be ExtractCB"
-        assert os.path.basename(
-            sys.argv[2]) == "ratings.csv", "Wrong input file provided. Input file must be named 'ratings.csv'"
+        assert sys.argv[1] == 'ExtractCB', "Wrong method provided. Method must be ExtractCB"
+        assert os.path.basename(sys.argv[2]) == "ratings.csv", "Wrong input file provided. Input file must be named 'ratings.csv'"
         assert os.path.isfile(sys.argv[2]), "Input file path is invalid or file doesn't exist"
-        assert isinstance(eval(sys.argv[3]), int), "K must be a number"
-        assert not eval(sys.argv[4]) or isinstance(eval(sys.argv[4]), int), "T must be a number or None"
-        assert not eval(sys.argv[5]) or isinstance(eval(sys.argv[5]), float), "epsilon must be a number or None"
-        assert os.path.isdir(sys.argv[6]), "U directory is invalid or doesn't exist"
-        assert os.path.isdir(sys.argv[7]), "V directory is invalid or doesn't exist"
-        assert os.path.isdir(sys.argv[8]), "B directory is invalid or doesn't exist"
+
+        try:
+            if not isinstance(eval(sys.argv[3]), int):
+                raise Exception
+        except Exception as ex:
+            raise Exception("K must be an integer")
+
+        try:
+            if sys.argv[4] and not isinstance(eval(sys.argv[4]), int):
+                raise Exception
+        except Exception as ex:
+            raise Exception("T must be either empty or an integer")
+
+        try:
+            if sys.argv[5] and not isinstance(eval(sys.argv[5]), float):
+                raise Exception
+        except Exception as ex:
+            raise Exception("Epsilon must be either empty or a decimal number")
+
+        assert not sys.argv[6] or os.path.isdir(sys.argv[6]), "U directory is invalid or doesn't exist"
+        assert not sys.argv[7] or os.path.isdir(sys.argv[7]), "V directory is invalid or doesn't exist"
+        assert not sys.argv[8] or os.path.isdir(sys.argv[8]), "B directory is invalid or doesn't exist"
 
         ratings_path = sys.argv[2]
         k_size = int(sys.argv[3])
-        t_size = 10 if sys.argv[4] == 'null' else int(sys.argv[4])
-        epsilon = 0.01 if sys.argv[5] == 'null' else float(sys.argv[5])
-        u_path = sys.argv[6] + r"u.csv"
-        v_path = sys.argv[7] + r"v.csv"
-        b_path = sys.argv[8] + r"b.csv"
+        t_size = 10 if not sys.argv[4] else int(sys.argv[4])
+        epsilon = 0.01 if not sys.argv[5] else float(sys.argv[5])
+        u_path = sys.argv[6] + "\\u.csv" if sys.argv[6] else "u.csv"
+        v_path = sys.argv[7] + "\\v.csv" if sys.argv[7] else "v.csv"
+        b_path = sys.argv[8] + "\\b.csv" if sys.argv[8] else "b.csv"
 
-        # build_b_file()
+        # build_b_file(ratings_path=ratings_path, k=k_size, t=t_size, epsilon=epsilon)
 
+        print "Recommendation service is ready to receive requests..."
         app.run()
     except Exception as ex:
-        print "Error!", ex
-        print traceback.print_exc()
+        print "ERROR!", ex
+        # print traceback.print_exc()
