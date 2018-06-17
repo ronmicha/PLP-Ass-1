@@ -1,13 +1,13 @@
 import os
 import json
 import sys
-import traceback
+import argparse
 import pandas as pd
 import numpy as np
 from flask import Flask, request, jsonify
 from sklearn.model_selection import train_test_split
 
-app = Flask(__name__)
+flask_app = Flask(__name__)
 MOVIE_ID_COL = 'movieId'
 USER_ID_COL = 'userId'
 RATING_COL = 'rating'
@@ -122,7 +122,7 @@ def build_b_file(ratings_path, k=20, t=10, epsilon=0.01):
     np.savetxt(b_path, b_arr, delimiter=',')
 
 
-@app.before_first_request
+@flask_app.before_first_request
 def load_files():
     global u_rec, v_rec, b_rec, ratings
     u_rec = np.loadtxt(u_path, delimiter=',')
@@ -149,7 +149,7 @@ def get_codebook_recoms(user_id, n):
     return recoms
 
 
-@app.route('/', methods=['POST'])
+@flask_app.route('/', methods=['POST'])
 def get_recommendation():
     try:
         data = json.loads(request.data)
@@ -165,46 +165,50 @@ def get_recommendation():
 
 if __name__ == '__main__':
     try:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("Command", nargs="?", default=None, type=str)
+        parser.add_argument("Ratings", nargs="?", default='./ratings.csv', type=str)
+        parser.add_argument("k", nargs="?", default=20, type=int)
+        parser.add_argument("t", nargs="?", default=10, type=int)
+        parser.add_argument("e", nargs="?", default=0.01, type=float)
+        parser.add_argument("u", nargs="?", default="./", type=str)
+        parser.add_argument("v", nargs="?", default="./", type=str)
+        parser.add_argument("b", nargs="?", default="./", type=str)
+        parser.add_argument("-t", nargs="?", default=None, type=int, required=False)
+        parser.add_argument("-e", nargs="?", default=None, type=float, required=False)
+        parser.add_argument("-u", nargs="?", default=None, type=str, required=False)
+        parser.add_argument("-v", nargs="?", default=None, type=str, required=False)
+        parser.add_argument("-b", nargs="?", default=None, type=str, required=False)
+
         pd.set_option('mode.chained_assignment', None)
-        assert len(sys.argv) == 9, "Wrong number of arguments. Please provide 8 arguments"
-        assert sys.argv[1] == 'ExtractCB', "Wrong method provided. Method must be ExtractCB"
-        assert os.path.basename(sys.argv[2]) == "ratings.csv", "Wrong input file provided. Input file must be named 'ratings.csv'"
-        assert os.path.isfile(sys.argv[2]), "Input file path is invalid or file doesn't exist"
 
-        try:
-            if not isinstance(eval(sys.argv[3]), int):
-                raise Exception
-        except Exception as ex:
-            raise Exception("K must be an integer")
-
-        try:
-            if sys.argv[4] and not isinstance(eval(sys.argv[4]), int):
-                raise Exception
-        except Exception as ex:
-            raise Exception("T must be either empty or an integer")
-
-        try:
-            if sys.argv[5] and not isinstance(eval(sys.argv[5]), float):
-                raise Exception
-        except Exception as ex:
-            raise Exception("Epsilon must be either empty or a decimal number")
-
-        assert not sys.argv[6] or os.path.isdir(sys.argv[6]), "U directory is invalid or doesn't exist"
-        assert not sys.argv[7] or os.path.isdir(sys.argv[7]), "V directory is invalid or doesn't exist"
-        assert not sys.argv[8] or os.path.isdir(sys.argv[8]), "B directory is invalid or doesn't exist"
-
-        ratings_path = sys.argv[2]
-        k_size = int(sys.argv[3])
-        t_size = 10 if not sys.argv[4] else int(sys.argv[4])
-        epsilon = 0.01 if not sys.argv[5] else float(sys.argv[5])
-        u_path = sys.argv[6] + r"\u.csv" if sys.argv[6] else "u.csv"
-        v_path = sys.argv[7] + r"\v.csv" if sys.argv[7] else "v.csv"
-        b_path = sys.argv[8] + r"\b.csv" if sys.argv[8] else "b.csv"
-
-        # build_b_file(ratings_path=ratings_path, k=k_size, t=t_size, epsilon=epsilon)
-
+        args = parser.parse_args(sys.argv[1:])
+        if args.Command and args.Command.lower() == 'extractcb':
+            ratings_path = args.Ratings
+            k_size = args.k
+            t_size = args.t
+            epsilon = args.e
+            u_path = args.u
+            v_path = args.v
+            b_path = args.b
+            # assert os.path.basename(
+            #     ratings_path) == "ratings.csv", "Wrong input file provided. Input file must be named 'ratings.csv'"
+            # assert os.path.isfile(ratings_path), "Input file path is invalid or file doesn't exist"
+            #
+            # assert os.path.isdir(u_path), "U directory is invalid or doesn't exist"
+            # assert os.path.isdir(v_path), "V directory is invalid or doesn't exist"
+            # assert os.path.isdir(b_path), "B directory is invalid or doesn't exist"
+            u_path += 'u.csv'
+            v_path += 'v.csv'
+            b_path += 'b.csv'
+            print("Data Extracted:")
+            print("ratings:{}, k:{}, t:{}, e:{}, u:{}, v:{}, b:{}".format(ratings_path, k_size, t_size, epsilon, u_path,
+                                                                          v_path, b_path))
+            print("Starting collaborative filtering algorithm")
+            # build_b_file(ratings_path=ratings_path, k=k_size, t=t_size, epsilon=epsilon)
+            print("Finished collaborative filtering algorithm")
+        #
         print "Recommendation service is ready to receive requests..."
-        app.run()
+        # flask_app.run()
     except Exception as ex:
         print "ERROR!", ex
-        # print traceback.print_exc()

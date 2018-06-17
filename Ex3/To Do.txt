@@ -1,0 +1,11 @@
+Task 1
+------
+* Use numpy?
+
+Task 2
+------
+* From the forum: if a new user needs recommendation, return average rating. Moshe said it's in the task file.
+* Build model only if sent extract cb
+* From the forum:
+ במידה ויהיו פרמטרים חסרים, נהיה חייבים להריץ בצורה מפורשת עם שם הפרמטר וערכו, למשל ExtrctCB T=5, ואז ערכי ברירת המחדל יופעלו.
+* Add readme
