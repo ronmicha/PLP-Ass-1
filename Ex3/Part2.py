@@ -191,13 +191,13 @@ if __name__ == '__main__':
             u_path = args.u
             v_path = args.v
             b_path = args.b
-            # assert os.path.basename(
-            #     ratings_path) == "ratings.csv", "Wrong input file provided. Input file must be named 'ratings.csv'"
-            # assert os.path.isfile(ratings_path), "Input file path is invalid or file doesn't exist"
-            #
-            # assert os.path.isdir(u_path), "U directory is invalid or doesn't exist"
-            # assert os.path.isdir(v_path), "V directory is invalid or doesn't exist"
-            # assert os.path.isdir(b_path), "B directory is invalid or doesn't exist"
+            assert os.path.basename(
+                ratings_path) == "ratings.csv", "Wrong input file provided. Input file must be named 'ratings.csv'"
+            assert os.path.isfile(ratings_path), "Input file path is invalid or file doesn't exist"
+
+            assert os.path.isdir(u_path), "U directory is invalid or doesn't exist"
+            assert os.path.isdir(v_path), "V directory is invalid or doesn't exist"
+            assert os.path.isdir(b_path), "B directory is invalid or doesn't exist"
             u_path += 'u.csv'
             v_path += 'v.csv'
             b_path += 'b.csv'
@@ -205,7 +205,7 @@ if __name__ == '__main__':
             print("ratings:{}, k:{}, t:{}, e:{}, u:{}, v:{}, b:{}".format(ratings_path, k_size, t_size, epsilon, u_path,
                                                                           v_path, b_path))
             print("Starting collaborative filtering algorithm")
-            # build_b_file(ratings_path=ratings_path, k=k_size, t=t_size, epsilon=epsilon)
+            build_b_file(ratings_path=ratings_path, k=k_size, t=t_size, epsilon=epsilon)
             print("Finished collaborative filtering algorithm")
         #
         print "Recommendation service is ready to receive requests..."
