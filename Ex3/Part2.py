@@ -188,6 +188,13 @@ if __name__ == '__main__':
         pd.set_option('mode.chained_assignment', None)
 
         args = parser.parse_args(sys.argv[1:])
+        assert not u_path or os.path.isdir(u_path), "U directory is invalid or doesn't exist"
+        assert not v_path or os.path.isdir(v_path), "V directory is invalid or doesn't exist"
+        assert not b_path or os.path.isdir(b_path), "B directory is invalid or doesn't exist"
+        u_path = u_path + r'\u.csv' if u_path else 'u.csv'
+        v_path = v_path + r'\v.csv' if v_path else 'v.csv'
+        b_path = b_path + r'\b.csv' if b_path else 'b.csv'
+
         if args.Command and args.Command.lower() == 'extractcb':
             ratings_path = args.Ratings
             k_size = args.k
@@ -199,13 +206,6 @@ if __name__ == '__main__':
             assert os.path.basename(
                 ratings_path) == "ratings.csv", "Wrong input file provided. Input file must be named 'ratings.csv'"
             assert os.path.isfile(ratings_path), "Input file path is invalid or file doesn't exist"
-
-            assert not u_path or os.path.isdir(u_path), "U directory is invalid or doesn't exist"
-            assert not v_path or os.path.isdir(v_path), "V directory is invalid or doesn't exist"
-            assert not b_path or os.path.isdir(b_path), "B directory is invalid or doesn't exist"
-            u_path = u_path + r'\u.csv' if u_path else 'u.csv'
-            v_path = v_path + r'\v.csv' if v_path else 'u.csv'
-            b_path = b_path + r'\b.csv' if b_path else 'u.csv'
             print("Data Extracted:")
             print("ratings:{}, k:{}, t:{}, e:{}, u:{}, v:{}, b:{}".format(ratings_path, k_size, t_size, epsilon, u_path,
                                                                           v_path, b_path))
