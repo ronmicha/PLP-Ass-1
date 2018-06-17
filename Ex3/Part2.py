@@ -207,8 +207,8 @@ if __name__ == '__main__':
             print("Starting collaborative filtering algorithm")
             build_b_file(ratings_path=ratings_path, k=k_size, t=t_size, epsilon=epsilon)
             print("Finished collaborative filtering algorithm")
-        #
+
         print "Recommendation service is ready to receive requests..."
-        # flask_app.run()
+        flask_app.run()
     except Exception as ex:
         print "ERROR!", ex
