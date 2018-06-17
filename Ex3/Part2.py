@@ -165,6 +165,11 @@ def get_recommendation():
 
 if __name__ == '__main__':
     try:
+        ratings_path = './ratings.csv'
+        u_path = './u.csv'
+        v_path = './v.csv'
+        b_path = './b.csv'
+
         parser = argparse.ArgumentParser()
         parser.add_argument("Command", nargs="?", default=None, type=str)
         parser.add_argument("Ratings", nargs="?", default='./ratings.csv', type=str)
