@@ -165,11 +165,6 @@ def get_recommendation():
 
 if __name__ == '__main__':
     try:
-        u_path = 'u.csv'
-        v_path = 'v.csv'
-        b_path = 'b.csv'
-        ratings_path = './ratings.csv'
-
         parser = argparse.ArgumentParser()
         parser.add_argument("Command", nargs="?", default=None, type=str)
         parser.add_argument("Ratings", nargs="?", default='./ratings.csv', type=str)
@@ -188,6 +183,13 @@ if __name__ == '__main__':
         pd.set_option('mode.chained_assignment', None)
 
         args = parser.parse_args(sys.argv[1:])
+        ratings_path = args.Ratings
+        k_size = args.k
+        t_size = args.t
+        epsilon = args.e
+        u_path = args.u
+        v_path = args.v
+        b_path = args.b
         assert not u_path or os.path.isdir(u_path), "U directory is invalid or doesn't exist"
         assert not v_path or os.path.isdir(v_path), "V directory is invalid or doesn't exist"
         assert not b_path or os.path.isdir(b_path), "B directory is invalid or doesn't exist"
@@ -196,13 +198,6 @@ if __name__ == '__main__':
         b_path = b_path + r'\b.csv' if b_path else 'b.csv'
 
         if args.Command and args.Command.lower() == 'extractcb':
-            ratings_path = args.Ratings
-            k_size = args.k
-            t_size = args.t
-            epsilon = args.e
-            u_path = args.u
-            v_path = args.v
-            b_path = args.b
             assert os.path.basename(
                 ratings_path) == "ratings.csv", "Wrong input file provided. Input file must be named 'ratings.csv'"
             assert os.path.isfile(ratings_path), "Input file path is invalid or file doesn't exist"
