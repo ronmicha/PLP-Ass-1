@@ -197,13 +197,12 @@ if __name__ == '__main__':
         v_path = v_path + r'\v.csv' if v_path else 'v.csv'
         b_path = b_path + r'\b.csv' if b_path else 'b.csv'
 
+        print("Received arguments:")
+        print("ratings file path: {}\nK={}\nT={}\nepsilon={}\nu csv path: {}\nv csv path: {}\nb csv path: {}".format(ratings_path, k_size, t_size, epsilon, u_path,v_path, b_path))
         if args.Command and args.Command.lower() == 'extractcb':
             assert os.path.basename(
                 ratings_path) == "ratings.csv", "Wrong input file provided. Input file must be named 'ratings.csv'"
             assert os.path.isfile(ratings_path), "Input file path is invalid or file doesn't exist"
-            print("Data Extracted:")
-            print("ratings:{}, k:{}, t:{}, e:{}, u:{}, v:{}, b:{}".format(ratings_path, k_size, t_size, epsilon, u_path,
-                                                                          v_path, b_path))
             print("Starting collaborative filtering algorithm")
             build_b_file(ratings_path=ratings_path, k=k_size, t=t_size, epsilon=epsilon)
             print("Finished collaborative filtering algorithm")

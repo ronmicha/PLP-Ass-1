@@ -7,7 +7,7 @@ How to use:
 
 Mandatory arguments:
 Command: 'ExtractCB', any other input will not start the recommendation system build but will start the web service
-Ratings: Path to ratings file. Must end with 'ratings.csv'.
+Ratings: Path to ratings file. File name must be 'ratings.csv'.
 
 Optional arguments:
 *** Important ***
