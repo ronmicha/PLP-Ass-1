@@ -190,15 +190,13 @@ if __name__ == '__main__':
         u_path = args.u
         v_path = args.v
         b_path = args.b
-        assert not u_path or os.path.isdir(u_path), "U directory is invalid or doesn't exist"
-        assert not v_path or os.path.isdir(v_path), "V directory is invalid or doesn't exist"
-        assert not b_path or os.path.isdir(b_path), "B directory is invalid or doesn't exist"
-        u_path = u_path + r'\u.csv' if u_path else 'u.csv'
-        v_path = v_path + r'\v.csv' if v_path else 'v.csv'
-        b_path = b_path + r'\b.csv' if b_path else 'b.csv'
+        u_path = u_path if u_path else 'u.csv'
+        v_path = v_path if v_path else 'v.csv'
+        b_path = b_path if b_path else 'b.csv'
 
         print("Received arguments:")
-        print("ratings file path: {}\nK={}\nT={}\nepsilon={}\nu csv path: {}\nv csv path: {}\nb csv path: {}".format(ratings_path, k_size, t_size, epsilon, u_path,v_path, b_path))
+        print("ratings file path: {}\nK={}\nT={}\nepsilon={}\nu csv path: {}\nv csv path: {}\nb csv path: {}".format(
+            ratings_path, k_size, t_size, epsilon, u_path, v_path, b_path))
         if args.Command and args.Command.lower() == 'extractcb':
             assert os.path.basename(
                 ratings_path) == "ratings.csv", "Wrong input file provided. Input file must be named 'ratings.csv'"
@@ -206,8 +204,8 @@ if __name__ == '__main__':
             print("Starting collaborative filtering algorithm")
             build_b_file(ratings_path=ratings_path, k=k_size, t=t_size, epsilon=epsilon)
             print("Finished collaborative filtering algorithm")
-
-        print "Recommendation service is ready to receive requests..."
-        flask_app.run()
+        else:
+            print "Recommendation service is ready to receive requests..."
+            flask_app.run()
     except Exception as ex:
         print "ERROR!", ex
