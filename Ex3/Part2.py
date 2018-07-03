@@ -5,7 +5,6 @@ import argparse
 import pandas as pd
 import numpy as np
 from flask import Flask, request, jsonify
-from sklearn.model_selection import train_test_split
 
 flask_app = Flask(__name__)
 MOVIE_ID_COL = 'movieId'
@@ -92,12 +91,18 @@ def get_rmse(sv, b, u, v):
     return mse ** 0.5
 
 
+def split_ratings(ratings_df, sv_size=0.2):
+    sv_row_count = int(len(ratings_df.index) * sv_size)
+    st_row_count = len(ratings_df.index) - sv_row_count
+    return ratings_df.head(st_row_count), ratings_df.tail(sv_row_count)
+
+
 def build_b_file(ratings_path, k=20, t=10, epsilon=0.01):
     rating_df = pd.read_csv(ratings_path)
     rating_df.sort_values(by='timestamp', inplace=True)
     v_arr = np.array(np.random.randint(0, k, rating_df[MOVIE_ID_COL].max() + 1))
     u_arr = np.array(np.random.randint(0, k, len(rating_df[USER_ID_COL].unique())))
-    st_df, sv_df = train_test_split(rating_df, test_size=0.2, shuffle=False)
+    st_df, sv_df = split_ratings(rating_df)
     global AVG_SYSTEM_RATING
     AVG_SYSTEM_RATING = st_df[RATING_COL].mean()
 
@@ -197,6 +202,7 @@ if __name__ == '__main__':
         print("Received arguments:")
         print("ratings file path: {}\nK={}\nT={}\nepsilon={}\nu csv path: {}\nv csv path: {}\nb csv path: {}".format(
             ratings_path, k_size, t_size, epsilon, u_path, v_path, b_path))
+
         if args.Command and args.Command.lower() == 'extractcb':
             assert os.path.basename(
                 ratings_path) == "ratings.csv", "Wrong input file provided. Input file must be named 'ratings.csv'"
