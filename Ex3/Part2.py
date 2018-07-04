@@ -195,9 +195,9 @@ if __name__ == '__main__':
         u_path = args.u
         v_path = args.v
         b_path = args.b
-        u_path = u_path if u_path else 'u.csv'
-        v_path = v_path if v_path else 'v.csv'
-        b_path = b_path if b_path else 'b.csv'
+        u_path = u_path if u_path else 'u1.csv'
+        v_path = v_path if v_path else 'v1.csv'
+        b_path = b_path if b_path else 'b1.csv'
 
         print("Received arguments:")
         print("ratings file path: {}\nK={}\nT={}\nepsilon={}\nu csv path: {}\nv csv path: {}\nb csv path: {}".format(
