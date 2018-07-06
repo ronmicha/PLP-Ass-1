@@ -1,0 +1,28 @@
+PPL Lab2 instructions:
+-	Whe have Users JSON & Transactions JSON
+-	Can be done in Py2 or Py3
+
+Part A:
+1.	Given a transaction you look at the past, not at the present and future
+2.	Expansion - choose the categories which are likely to have subscriptions - electricity, payments...
+	Not food etc.
+3.	Precision is more important than runtime
+4.	Consider checking the "location" feature in a transaction (if not NULL) for predicting whether it's a subscription or not. May be a possible feature
+5.	Consider checking the transaction name (if not NULL) to decide if subscription or not
+6.	For the income prediction task - add features such as average weekly income, average monthly income...
+7.	When adding features to transactions - their value must be set ONLY by PAST data relative to transaction date
+8.	Example: A transaction can have 10 features related(?) to a week, 10 more features related(?) to month, 10 more features related(?) to subscription
+9.	We must convert the dates in the transaction to day in the week for the weekly prediction task.
+10.	If we want to predict for week number 5, we look only at the PAST data at week 5. NO OTHER PAST WEEKS.
+11.	Yoni is arguing hardcore with Moshe that I don't understand, seems like this assignment makes no sense...
+
+Part B
+1.	Each USER will have its own 2 personal models: weekly income & monthly income
+2.	Apart of those there will be one more non-personal model for subscription.
+	So for 10 users there will be total of 21 models.
+3.	Non-personal model means that the model will have non-personal features.
+4.	Feature extraction is per user. But the non-personal model will include the features for all users.
+5.	When building the model we need to choose a specific function - tanh, expo, sigmoid, and choose the best
+
+Part C
+1. I'm outta here!!!!!!!!!!!!
