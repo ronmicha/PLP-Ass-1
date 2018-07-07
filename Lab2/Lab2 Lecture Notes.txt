@@ -4,7 +4,7 @@ PPL Lab2 instructions:
 
 Part A:
 1.	Given a transaction you look at the past, not at the present and future
-2.	Expansion - choose the categories which are likely to have subscriptions - electricity, payments...
+2.	Choose the categories which are likely to have subscriptions - electricity, payments...
 	Not food etc.
 3.	Precision is more important than runtime
 4.	Consider checking the "location" feature in a transaction (if not NULL) for predicting whether it's a subscription or not. May be a possible feature
