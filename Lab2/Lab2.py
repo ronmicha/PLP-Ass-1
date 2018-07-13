@@ -2,6 +2,11 @@ from difflib import SequenceMatcher
 import numpy as np
 import pandas as pd
 from pandas.tseries.offsets import MonthEnd
+from sklearn.svm import SVC
+from sklearn.linear_model import SGDClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neural_network import MLPClassifier
+from sklearn.tree import DecisionTreeClassifier
 
 # region Column Names Enum
 CATEGORY = "category"
@@ -130,9 +135,11 @@ def build_subscription_model(data_df):
     Y = data_df[SUBSCRIPTION]
     x_train, x_test = np.split(X, [int(0.8 * len(X.index))])
     y_train, y_test = np.split(Y, [int(0.8 * len(Y.index))])
-    print("")
-    # SVM, SGD, GPC, Naive Bayes, MLP
-    # If Income - false, If subscription - true?
+    models = {"SVC": SVC(), "SGD": SGDClassifier(), "Naive Bayes": GaussianNB(), "MLP": MLPClassifier(), "Tree": DecisionTreeClassifier()}
+
+    for name, model in models.items():
+        model.fit(x_train, y_train)
+        print name, ":", model.score(x_test, y_test)
 
 
 def part_b(data_df):
