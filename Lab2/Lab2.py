@@ -3,6 +3,7 @@ import datetime as dt
 from pandas.tseries.offsets import MonthEnd
 
 # region Column Names Enum
+USERID = "userId"
 WEEKDAY = "weekday"
 DATE = "date"
 INCOME = "income"
@@ -18,6 +19,7 @@ SAME_CATEGORYID_LAST_MONTH = "same_categoryId_last_month"
 SAME_AMOUNT_LAST_WEEK = "same_amount_last_week"
 SAME_AMOUNT_LAST_MONTH = "same_amount_last_month"
 # endregion
+
 users_df = None
 transactions_df = None
 
@@ -32,7 +34,7 @@ def read_users_and_transactions_files(users_file_path, transactions_file_path):
 
 
 def part_a():
-    transactions_df[WEEKDAY] = pd.to_datetime(transactions_df[DATE]).weekday()  # .apply(lambda x: x.weekday())
+    transactions_df[WEEKDAY] = pd.to_datetime(transactions_df[DATE]).apply(lambda x: x.weekday())
 
     # income prediction features
     transactions_df[INCOME] = transactions_df[AMOUNT] < 0
@@ -68,15 +70,15 @@ def part_a():
 
 def get_last_n_days_incomes(row, n):
     if n == 7:
-        start_date = row["date"] - pd.DateOffset(days=7 + int(row["weekday"]))
+        start_date = row[DATE] - pd.DateOffset(days=7 + int(row[WEEKDAY]))
         end_date = start_date + pd.DateOffset(days=6)
     else:  # n == 30
-        start_date = row["date"] - pd.DateOffset(months=1, days=int(row["weekday"]))
+        start_date = row[DATE] - pd.DateOffset(months=1, days=int(row[WEEKDAY]))
         end_date = start_date + MonthEnd()
-    last_n_days_incomes = transactions_df[(transactions_df["userId"] == row["userId"]) &
-                                          (transactions_df["income"]) &
-                                          (transactions_df["date"] >= start_date) &
-                                          (transactions_df["date"] <= end_date)]
+    last_n_days_incomes = transactions_df[(transactions_df[USERID] == row[USERID]) &
+                                          (transactions_df[INCOME]) &
+                                          (transactions_df[DATE] >= start_date) &
+                                          (transactions_df[DATE] <= end_date)]
     return last_n_days_incomes
 
 
