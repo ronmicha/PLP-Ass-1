@@ -85,10 +85,11 @@ def get_last_n_days_incomes(row, n):
 
 
 def same_attr_past_n_days(row, attr, n, similarity=1.0):
-    return not transactions_df[(transactions_df[USERID] == row[USERID]) &
-                               (transactions_df[INCOME] == False) &
-                               (transactions_df[DATE] == row[DATE] - pd.DateOffset(days=n)) &
-                               (SequenceMatcher(None, transactions_df[attr], row[attr]).ratio() >= similarity)].empty
+    last_n_days_transaction = transactions_df[(transactions_df[USERID] == row[USERID]) &
+                                              (transactions_df[INCOME] == False) &
+                                              (transactions_df[DATE] == row[DATE] - pd.DateOffset(days=n))]
+    return last_n_days_transaction[attr].apply(
+        lambda x: SequenceMatcher(None, x, row[attr]).ratio() >= similarity).any()
 
 
 if __name__ == '__main__':
