@@ -38,37 +38,35 @@ all_categories = None
 # Original "users.json" had invalid structure, I modified it to be valid
 def read_users_and_transactions_files(users_file_path, transactions_file_path):
     global users_df
-    users_df = pd.read_json(users_file_path)
     global transactions_df
+
+    users_df = pd.read_json(users_file_path)
     transactions_df = pd.read_json(transactions_file_path)
     transactions_df = transactions_df.sort_values(DATE)
 
 
 # region Part A
 def part_a():
+    global all_categories
+    global transactions_df
+
     transactions_df[WEEKDAY] = pd.to_datetime(transactions_df[DATE]).apply(lambda x: x.weekday())
     categories_df = transactions_df[CATEGORY].apply(
         lambda x: pd.Series({k if k.lower() != 'subscription' else 'subscription_cat': 1 for v, k in enumerate(x)})).fillna(0)
-    global all_categories
     all_categories = list(categories_df.columns)
-    global transactions_df
     transactions_df = pd.concat([transactions_df, categories_df], axis=1)
-
-    # income prediction features
     transactions_df[INCOME] = transactions_df[AMOUNT] < 0
     additional_features_data = []
+
     for index, row in transactions_df.iterrows():
         last_week_incomes = get_last_n_days_incomes(row, 7)
+        last_month_incomes = get_last_n_days_incomes(row, 30)
         total_incomes_last_week = round(-last_week_incomes[AMOUNT].sum(), 2) if not last_week_incomes.empty else None
         num_of_incomes_last_week = len(last_week_incomes.index)
-        last_month_incomes = get_last_n_days_incomes(row, 30)
-        total_incomes_last_month = round(-last_month_incomes[AMOUNT].sum(),
-                                         2) if not last_month_incomes.empty else None
+        total_incomes_last_month = round(-last_month_incomes[AMOUNT].sum(), 2) if not last_month_incomes.empty else None
         num_of_incomes_last_month = len(last_month_incomes.index)
-        same_name_last_week = same_attr_past_n_days(row, NAME, 7,
-                                                    lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
-        same_name_last_month = same_attr_past_n_days(row, NAME, 30,
-                                                     lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
+        same_name_last_week = same_attr_past_n_days(row, NAME, 7, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
+        same_name_last_month = same_attr_past_n_days(row, NAME, 30, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
         same_amount_last_week = same_attr_past_n_days(row, AMOUNT, 7, lambda a, b: abs(a - b) <= 20)
         same_amount_last_month = same_attr_past_n_days(row, AMOUNT, 30, lambda a, b: abs(a - b) <= 20)
         same_categoryid_last_week = same_attr_past_n_days(row, CATEGORYID, 7, lambda a, b: a == b)
@@ -127,6 +125,12 @@ def same_attr_past_n_days(row, attr, n, compare_func):
 # endregion
 
 # region Part B
+
+
+def part_b(data_df):
+    build_subscription_model(data_df)
+
+
 def build_subscription_model(data_df):
     features_cols = all_categories + [SAME_CATEGORYID_LAST_MONTH, SAME_CATEGORYID_LAST_WEEK,
                                       SAME_AMOUNT_LAST_MONTH, SAME_AMOUNT_LAST_WEEK,
@@ -135,15 +139,16 @@ def build_subscription_model(data_df):
     Y = data_df[SUBSCRIPTION]
     x_train, x_test = np.split(X, [int(0.8 * len(X.index))])
     y_train, y_test = np.split(Y, [int(0.8 * len(Y.index))])
-    models = {"SVC": SVC(), "SGD": SGDClassifier(), "Naive Bayes": GaussianNB(), "MLP": MLPClassifier(), "Tree": DecisionTreeClassifier()}
+
+    models = {"SVC": SVC(),
+              "SGD": SGDClassifier(),
+              "Naive Bayes": GaussianNB(),
+              "MLP": MLPClassifier(),
+              "Decision Tree": DecisionTreeClassifier()}
 
     for name, model in models.items():
         model.fit(x_train, y_train)
         print name, ":", model.score(x_test, y_test)
-
-
-def part_b(data_df):
-    build_subscription_model(data_df)
 
 
 # endregion
