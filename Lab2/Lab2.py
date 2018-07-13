@@ -1,8 +1,6 @@
-import math
-
-import pandas as pd
-import datetime as dt
 from difflib import SequenceMatcher
+import numpy as np
+import pandas as pd
 from pandas.tseries.offsets import MonthEnd
 
 # region Column Names Enum
@@ -29,6 +27,7 @@ SAME_AMOUNT_LAST_MONTH = "same_amount_last_month"
 
 users_df = None
 transactions_df = None
+all_categories = None
 
 
 # Original "users.json" had invalid structure, I modified it to be valid
@@ -40,9 +39,11 @@ def read_users_and_transactions_files(users_file_path, transactions_file_path):
     transactions_df = transactions_df.sort_values(DATE)
 
 
+# region Part A
 def part_a():
     transactions_df[WEEKDAY] = pd.to_datetime(transactions_df[DATE]).apply(lambda x: x.weekday())
-    categories_df = transactions_df[CATEGORY].apply(lambda x: pd.Series({k: 1 for v, k in enumerate(x)})).fillna(0)
+    categories_df = transactions_df[CATEGORY].apply(
+        lambda x: pd.Series({k if k.lower() != 'subscription' else 'subscription_cat': 1 for v, k in enumerate(x)})).fillna(0)
     global all_categories
     all_categories = list(categories_df.columns)
     global transactions_df
@@ -118,6 +119,41 @@ def same_attr_past_n_days(row, attr, n, compare_func):
     return last_n_days_transaction[attr].apply(lambda x: compare_func(x, row[attr])).any()
 
 
+# endregion
+
+# region Part B
+def build_subscription_model(data_df):
+    features_cols = all_categories + [SAME_CATEGORYID_LAST_MONTH, SAME_CATEGORYID_LAST_WEEK,
+                                      SAME_AMOUNT_LAST_MONTH, SAME_AMOUNT_LAST_WEEK,
+                                      SAME_NAME_LAST_MONTH, SAME_NAME_LAST_WEEK]
+    X = data_df[features_cols]
+    Y = data_df[SUBSCRIPTION]
+    x_train, x_test = np.split(X, [int(0.8 * len(X.index))])
+    y_train, y_test = np.split(Y, [int(0.8 * len(Y.index))])
+    print("")
+    # SVM, SGD, GPC, Naive Bayes, MLP
+    # If Income - false, If subscription - true?
+
+
+def part_b(data_df):
+    build_subscription_model(data_df)
+
+
+# endregion
+
+
 if __name__ == '__main__':
     read_users_and_transactions_files("./users.json", "./transactions_clean.json")
-    all_data = part_a()
+    # all_data = part_a()
+    # all_data.to_csv('data.csv', index=False)
+
+    # debug
+    all_data = pd.read_csv('data.csv')
+    global all_categories
+    all_categories = [u'Bicycles', u'Shops', u'Food and Drink', u'Restaurants', u'Car Service', u'Ride Share', u'Travel',
+                      u'Airlines and Aviation Services', u'Coffee Shop', u'Gyms and Fitness Centers', u'Recreation', u'Deposit', u'Transfer',
+                      u'Credit Card', u'Payment', u'Credit', u'Discount Stores', u'Service', u'Telecommunication Services', u'Music, Video and DVD',
+                      u'Financial', u'Computers and Electronics', u'Video Games', u'Warehouses and Wholesale Stores', u'Debit', u'Digital Purchase',
+                      u'Supermarkets and Groceries', u'Cable', u'Gas Stations', u'Department Stores', u'Bank Fees', u'Overdraft', u'Interest',
+                      u'Interest Charged', u'Wire Transfer', 'subscription_cat', u'Personal Care', u'ATM', u'Withdrawal', u'Pharmacies']
+    part_b(all_data)
