@@ -1,5 +1,6 @@
 import pandas as pd
 import datetime as dt
+from difflib import SequenceMatcher
 from pandas.tseries.offsets import MonthEnd
 
 # region Column Names Enum
@@ -8,6 +9,7 @@ WEEKDAY = "weekday"
 DATE = "date"
 INCOME = "income"
 AMOUNT = "amount"
+NAME = "name"
 TOTAL_INCOMES_LAST_WEEK = "total_incomes_last_week"
 NUM_OF_INCOMES_LAST_WEEK = "num_of_incomes_last_week"
 TOTAL_INCOMES_LAST_MONTH = "total_incomes_last_month"
@@ -47,6 +49,7 @@ def part_a():
         total_incomes_last_month = round(-last_month_incomes[AMOUNT].sum(),
                                          2) if not last_month_incomes.empty else None
         num_of_incomes_last_month = len(last_month_incomes.index)
+        same_name_last_week = same_attr_past_n_days(row, NAME, 7, 0.7)
         incomes_data.append(
             [total_incomes_last_week, num_of_incomes_last_week, total_incomes_last_month, num_of_incomes_last_month])
     incomes_df = pd.DataFrame(incomes_data, columns=[TOTAL_INCOMES_LAST_WEEK,
@@ -55,7 +58,6 @@ def part_a():
                                                      NUM_OF_INCOMES_LAST_MONTH])
 
     # subscription prediction features
-    transactions_df[SAME_NAME_LAST_WEEK] = ""
     transactions_df[SAME_NAME_LAST_MONTH] = ""
     transactions_df[SAME_CATEGORYID_LAST_WEEK] = ""
     transactions_df[SAME_CATEGORYID_LAST_MONTH] = ""
@@ -80,6 +82,13 @@ def get_last_n_days_incomes(row, n):
                                           (transactions_df[DATE] >= start_date) &
                                           (transactions_df[DATE] <= end_date)]
     return last_n_days_incomes
+
+
+def same_attr_past_n_days(row, attr, n, similarity=1.0):
+    return not transactions_df[(transactions_df[USERID] == row[USERID]) &
+                               (transactions_df[INCOME] == False) &
+                               (transactions_df[DATE] == row[DATE] - pd.DateOffset(days=n)) &
+                               (SequenceMatcher(None, transactions_df[attr], row[attr]).ratio() >= similarity)].empty
 
 
 if __name__ == '__main__':

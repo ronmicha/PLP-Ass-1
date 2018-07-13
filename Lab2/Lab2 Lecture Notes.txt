@@ -1,5 +1,5 @@
 PPL Lab2 instructions:
--	Whe have Users JSON & Transactions JSON
+-	We have Users JSON & Transactions JSON
 -	Can be done in Py2 or Py3
 
 Part A:
