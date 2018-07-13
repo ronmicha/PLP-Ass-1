@@ -2,6 +2,22 @@ import pandas as pd
 import datetime as dt
 from pandas.tseries.offsets import MonthEnd
 
+# region Column Names Enum
+WEEKDAY = "weekday"
+DATE = "date"
+INCOME = "income"
+AMOUNT = "amount"
+TOTAL_INCOMES_LAST_WEEK = "total_incomes_last_week"
+NUM_OF_INCOMES_LAST_WEEK = "num_of_incomes_last_week"
+TOTAL_INCOMES_LAST_MONTH = "total_incomes_last_month"
+NUM_OF_INCOMES_LAST_MONTH = "num_of_incomes_last_month"
+SAME_NAME_LAST_WEEK = "same_name_last_week"
+SAME_NAME_LAST_MONTH = "same_name_last_month"
+SAME_CATEGORYID_LAST_WEEK = "same_categoryId_last_week"
+SAME_CATEGORYID_LAST_MONTH = "same_categoryId_last_month"
+SAME_AMOUNT_LAST_WEEK = "same_amount_last_week"
+SAME_AMOUNT_LAST_MONTH = "same_amount_last_month"
+# endregion
 users_df = None
 transactions_df = None
 
@@ -16,31 +32,33 @@ def read_users_and_transactions_files(users_file_path, transactions_file_path):
 
 
 def part_a():
-    transactions_df["weekday"] = pd.to_datetime(transactions_df["date"]).apply(lambda x: x.weekday())
+    transactions_df[WEEKDAY] = pd.to_datetime(transactions_df[DATE]).weekday()  # .apply(lambda x: x.weekday())
 
     # income prediction features
-    transactions_df["income"] = transactions_df["amount"] < 0
+    transactions_df[INCOME] = transactions_df[AMOUNT] < 0
     incomes_data = []
     for index, row in transactions_df.iterrows():
         last_week_incomes = get_last_n_days_incomes(row, 7)
-        total_incomes_last_week = round(-last_week_incomes["amount"].sum(), 2) if not last_week_incomes.empty else None
+        total_incomes_last_week = round(-last_week_incomes[AMOUNT].sum(), 2) if not last_week_incomes.empty else None
         num_of_incomes_last_week = len(last_week_incomes.index)
         last_month_incomes = get_last_n_days_incomes(row, 30)
-        total_incomes_last_month = round(-last_month_incomes["amount"].sum(), 2) if not last_month_incomes.empty else None
+        total_incomes_last_month = round(-last_month_incomes[AMOUNT].sum(),
+                                         2) if not last_month_incomes.empty else None
         num_of_incomes_last_month = len(last_month_incomes.index)
-        incomes_data.append([total_incomes_last_week, num_of_incomes_last_week, total_incomes_last_month, num_of_incomes_last_month])
-    incomes_df = pd.DataFrame(incomes_data, columns=["total_incomes_last_week",
-                                                     "num_of_incomes_last_week",
-                                                     "total_incomes_last_month",
-                                                     "num_of_incomes_last_month"])
+        incomes_data.append(
+            [total_incomes_last_week, num_of_incomes_last_week, total_incomes_last_month, num_of_incomes_last_month])
+    incomes_df = pd.DataFrame(incomes_data, columns=[TOTAL_INCOMES_LAST_WEEK,
+                                                     NUM_OF_INCOMES_LAST_WEEK,
+                                                     TOTAL_INCOMES_LAST_MONTH,
+                                                     NUM_OF_INCOMES_LAST_MONTH])
 
     # subscription prediction features
-    transactions_df["same_name_last_week"] = ""
-    transactions_df["same_name_last_month"] = ""
-    transactions_df["same_categoryId_last_week"] = ""
-    transactions_df["same_categoryId_last_month"] = ""
-    transactions_df["same_amount_last_week"] = ""
-    transactions_df["same_amount_last_month"] = ""
+    transactions_df[SAME_NAME_LAST_WEEK] = ""
+    transactions_df[SAME_NAME_LAST_MONTH] = ""
+    transactions_df[SAME_CATEGORYID_LAST_WEEK] = ""
+    transactions_df[SAME_CATEGORYID_LAST_MONTH] = ""
+    transactions_df[SAME_AMOUNT_LAST_WEEK] = ""
+    transactions_df[SAME_AMOUNT_LAST_MONTH] = ""
     print ""
     # subscription:
     # 1. same categoryId and name
@@ -63,5 +81,5 @@ def get_last_n_days_incomes(row, n):
 
 
 if __name__ == '__main__':
-    read_users_and_transactions_files("./users.json", "./transactions_clean.txt")
+    read_users_and_transactions_files("./users.json", "./transactions_clean.json")
     part_a()
