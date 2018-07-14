@@ -225,8 +225,9 @@ def part_c():
 
 @flask_app.before_first_request
 def load_files():
-    global all_data, all_categories, models
-    all_data = pd.read_csv('data.csv')
+    global all_categories, models, transactions_df
+    transactions_df = pd.read_csv('data.csv')
+    transactions_df[DATE] = pd.to_datetime(transactions_df[DATE])
     all_categories = [u'Bicycles', u'Shops', u'Food and Drink', u'Restaurants', u'Car Service', u'Ride Share', u'Travel',
                       u'Airlines and Aviation Services', u'Coffee Shop', u'Gyms and Fitness Centers', u'Recreation', u'Deposit', u'Transfer',
                       u'Credit Card', u'Payment', u'Credit', u'Discount Stores', u'Service', u'Telecommunication Services', u'Music, Video and DVD',
@@ -249,6 +250,7 @@ def get_predictions():
 def predict(data):
     transaction = ready_transaction_to_model(data)
     return {
+        # ToDo use relevant columns for each model:
         "subscription": models['subscription'].predict(transaction),
         "weeklyIncome": models['incomes'][transaction[USER_ID]]['weekly'].predict(transaction),
         "monthlyIncome": models['incomes'][transaction[USER_ID]]['monthly'].predict(transaction)
@@ -262,6 +264,7 @@ def ready_transaction_to_model(data):
     for category in all_categories:
         trans_df[category] = 1 if category in trans_df[CATEGORY][0] else 0
     # Add columns : Weekday, Work Week & Month
+    trans_df[DATE] = pd.to_datetime(trans_df[DATE])
     trans_df[WEEKDAY] = pd.to_datetime(trans_df[DATE]).apply(lambda x: x.weekday())
     trans_df[WORK_WEEK] = pd.to_datetime(trans_df[DATE]).apply(lambda x: x.isocalendar()[1])
     trans_df[MONTH] = pd.to_datetime(trans_df[DATE]).apply(lambda x: x.month)
@@ -269,6 +272,18 @@ def ready_transaction_to_model(data):
     trans_df[INCOME] = trans_df[AMOUNT] < 0
     # Calculate all 'same' columns (total 6 columns)
     # Calculate total & num of incomes for week & month
+    last_week_incomes = get_last_n_days_incomes(trans_df.iloc[0], 7)
+    last_month_incomes = get_last_n_days_incomes(trans_df.iloc[0], 30)
+    trans_df[TOTAL_INCOMES_LAST_WEEK] = round(-last_week_incomes[AMOUNT].sum(), 2) if not last_week_incomes.empty else 0
+    trans_df[NUM_OF_INCOMES_LAST_WEEK] = len(last_week_incomes.index)
+    trans_df[TOTAL_INCOMES_LAST_MONTH] = round(-last_month_incomes[AMOUNT].sum(), 2) if not last_month_incomes.empty else 0
+    trans_df[NUM_OF_INCOMES_LAST_MONTH] = len(last_month_incomes.index)
+    trans_df[SAME_NAME_LAST_WEEK] = same_attr_past_n_days(trans_df.iloc[0], NAME, 7, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
+    trans_df[SAME_NAME_LAST_MONTH] = same_attr_past_n_days(trans_df.iloc[0], NAME, 30, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
+    trans_df[SAME_AMOUNT_LAST_WEEK] = same_attr_past_n_days(trans_df.iloc[0], AMOUNT, 7, lambda a, b: abs(a - b) <= 20)
+    trans_df[SAME_AMOUNT_LAST_MONTH] = same_attr_past_n_days(trans_df.iloc[0], AMOUNT, 30, lambda a, b: abs(a - b) <= 20)
+    trans_df[SAME_CATEGORY_ID_LAST_WEEK] = same_attr_past_n_days(trans_df.iloc[0], CATEGORY_ID, 7, lambda a, b: a == b)
+    trans_df[SAME_CATEGORY_ID_LAST_MONTH] = same_attr_past_n_days(trans_df.iloc[0], CATEGORY_ID, 30, lambda a, b: a == b)
     return trans_df
 
 
