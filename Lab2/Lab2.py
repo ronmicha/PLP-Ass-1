@@ -1,17 +1,17 @@
 import json
-from difflib import SequenceMatcher
+import pickle
 import numpy as np
 import pandas as pd
-from pandas.tseries.offsets import MonthBegin
+from difflib import SequenceMatcher
 from sklearn.svm import SVC, SVR
-from sklearn.linear_model import SGDClassifier, SGDRegressor
 from sklearn.naive_bayes import GaussianNB
+from pandas.tseries.offsets import MonthBegin
+from sklearn.linear_model import SGDClassifier, SGDRegressor
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.base import clone
-import pickle
 from flask import Flask, request, jsonify
 
 flask_app = Flask(__name__)
@@ -45,6 +45,7 @@ SAME_AMOUNT_LAST_MONTH = "same_amount_last_month"
 users_df = None
 transactions_df = None
 all_categories = None
+models = None
 
 
 # Original "users.json" had invalid structure, I modified it to be valid
@@ -87,6 +88,7 @@ def part_a():
         same_amount_last_month = same_attr_past_n_days(row, AMOUNT, 30, lambda a, b: abs(a - b) <= 20)
         same_categoryid_last_week = same_attr_past_n_days(row, CATEGORY_ID, 7, lambda a, b: a == b)
         same_categoryid_last_month = same_attr_past_n_days(row, CATEGORY_ID, 30, lambda a, b: a == b)
+
         additional_features_data.append([total_incomes_last_week,
                                          num_of_incomes_last_week,
                                          total_incomes_last_month,
@@ -154,9 +156,9 @@ def same_attr_past_n_days(row, attr, n, compare_func):
 
 def part_b(data_df):
     subscription_model = build_subscription_model(data_df)
-    users_models = build_income_models(data_df)
-    models = {"subscription": subscription_model, "incomes": users_models}
-    pickle.dump(models, open('models', 'wb'))
+    users_income_models = build_income_models(data_df)
+    models_dict = {"subscription": subscription_model, "incomes": users_income_models}
+    pickle.dump(models_dict, open('models', 'wb'))
 
 
 def build_subscription_model(data_df):
@@ -168,34 +170,38 @@ def build_subscription_model(data_df):
     x_train, x_test = np.split(X, [int(0.8 * len(X.index))])
     y_train, y_test = np.split(Y, [int(0.8 * len(Y.index))])
 
-    models = {"SVC": SVC(),
-              "SGD": SGDClassifier(),
-              "Naive Bayes": GaussianNB(),
-              "MLP": MLPClassifier(),
-              "Decision Tree": DecisionTreeClassifier()}
+    classification_models = {"SVC": SVC(),
+                             "SGD": SGDClassifier(),
+                             "Naive Bayes": GaussianNB(),
+                             "MLP": MLPClassifier(),
+                             "Decision Tree": DecisionTreeClassifier()}
 
     # Todo choose a specific model and use it
-    for name, model in models.items():
+    for name, model in classification_models.items():
         model.fit(x_train, y_train)
         return model
 
 
 def build_income_models(data_df):
-    features_cols = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_WEEK, NUM_OF_INCOMES_LAST_WEEK, TOTAL_INCOMES_LAST_MONTH,
-                                                          NUM_OF_INCOMES_LAST_MONTH]
-    regression_models = {"SVR": SVR(), "SGD": SGDRegressor(), "MLP": MLPRegressor(), "Decision Tree": DecisionTreeRegressor(),
-                         "Random Forest": RandomForestRegressor(), "Gradient Boost": GradientBoostingRegressor()}
+    features_cols = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_WEEK, NUM_OF_INCOMES_LAST_WEEK,
+                                                          TOTAL_INCOMES_LAST_MONTH, NUM_OF_INCOMES_LAST_MONTH]
+    regression_models = {"SVR": SVR(),
+                         "SGD": SGDRegressor(),
+                         "MLP": MLPRegressor(),
+                         "Decision Tree": DecisionTreeRegressor(),
+                         "Random Forest": RandomForestRegressor(),
+                         "Gradient Boost": GradientBoostingRegressor()}
     user_models = {}
     # ToDo choose a specific model and use it
     for name, model in regression_models.items():
         average_month_mse = 0
         average_week_mse = 0
-        for u_id in data_df[USER_ID].unique():
-            user_models[u_id] = {}
-            u_df = data_df[(data_df[USER_ID] == u_id) & (data_df[INCOME])]
-            X = u_df[features_cols]
-            Y_month = u_df[MONTHLY_INCOME]
-            Y_week = u_df[WEEKLY_INCOME]
+        for user_id in data_df[USER_ID].unique():
+            user_models[user_id] = {}
+            user_df = data_df[(data_df[USER_ID] == user_id) & (data_df[INCOME])]
+            X = user_df[features_cols]
+            Y_month = user_df[MONTHLY_INCOME]
+            Y_week = user_df[WEEKLY_INCOME]
             x_train, x_test = np.split(X, [int(0.8 * len(X.index))])
             y_month_train, y_month_test = np.split(Y_month, [int(0.8 * len(Y_month.index))])
             y_week_train, y_week_test = np.split(Y_week, [int(0.8 * len(Y_week.index))])
@@ -204,12 +210,12 @@ def build_income_models(data_df):
             month_model = clone(model)
             month_model.fit(x_train, y_month_train)
             average_month_mse += mean_squared_error(y_month_test, month_model.predict(x_test)) ** 0.5
-            user_models[u_id]['monthly'] = month_model
+            user_models[user_id]['monthly'] = month_model
             # Week
             week_model = clone(model)
             week_model.fit(x_train, y_week_train)
             average_week_mse += mean_squared_error(y_week_test, week_model.predict(x_test)) ** 0.5
-            user_models[u_id]['weekly'] = week_model
+            user_models[user_id]['weekly'] = week_model
         break
         print "Monthly avg MSE using", name, ":", average_month_mse / len(data_df[USER_ID].unique())
         print "Weekly avg MSE using", name, ":", average_week_mse / len(data_df[USER_ID].unique())
