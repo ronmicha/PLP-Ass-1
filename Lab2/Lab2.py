@@ -157,7 +157,6 @@ def part_b(data_df):
     users_models = build_income_models(data_df)
     models = {"subscription": subscription_model, "incomes": users_models}
     pickle.dump(models, open('models', 'wb'))
-    return models
 
 
 def build_subscription_model(data_df):
@@ -192,6 +191,7 @@ def build_income_models(data_df):
         average_month_mse = 0
         average_week_mse = 0
         for u_id in data_df[USER_ID].unique():
+            user_models[u_id] = {}
             u_df = data_df[(data_df[USER_ID] == u_id) & (data_df[INCOME])]
             X = u_df[features_cols]
             Y_month = u_df[MONTHLY_INCOME]
@@ -241,13 +241,13 @@ def get_predictions():
     try:
         data = json.loads(request.data)
         assert 'trans' in data, "Missing transaction"
-        return jsonify(predict(data['trans']))
+        return jsonify(predict(data))
     except Exception as e:
         return repr(e), 500
 
 
-def predict(transaction):
-    transaction = ready_transaction_to_model(transaction)
+def predict(data):
+    transaction = ready_transaction_to_model(data)
     return {
         "subscription": models['subscription'].predict(transaction),
         "weeklyIncome": models['incomes'][transaction[USER_ID]]['weekly'].predict(transaction),
@@ -255,13 +255,21 @@ def predict(transaction):
     }
 
 
-def ready_transaction_to_model(transaction):
+def ready_transaction_to_model(data):
+    trans_df = pd.DataFrame.from_dict(data).transpose().reset_index().drop('index', axis=1)
+
     # Turn categories array to discrete (add all categories and fill with 0/1)
+    for category in all_categories:
+        trans_df[category] = 1 if category in trans_df[CATEGORY][0] else 0
     # Add columns : Weekday, Work Week & Month
+    trans_df[WEEKDAY] = pd.to_datetime(trans_df[DATE]).apply(lambda x: x.weekday())
+    trans_df[WORK_WEEK] = pd.to_datetime(trans_df[DATE]).apply(lambda x: x.isocalendar()[1])
+    trans_df[MONTH] = pd.to_datetime(trans_df[DATE]).apply(lambda x: x.month)
     # Add Income column
+    trans_df[INCOME] = trans_df[AMOUNT] < 0
     # Calculate all 'same' columns (total 6 columns)
     # Calculate total & num of incomes for week & month
-    return transaction
+    return trans_df
 
 
 # endregion
@@ -272,13 +280,13 @@ if __name__ == '__main__':
     # all_data.to_csv('data.csv', index=False)
 
     # debug
-    all_data = pd.read_csv('data.csv')
-    global all_categories
-    all_categories = [u'Bicycles', u'Shops', u'Food and Drink', u'Restaurants', u'Car Service', u'Ride Share', u'Travel',
-                      u'Airlines and Aviation Services', u'Coffee Shop', u'Gyms and Fitness Centers', u'Recreation', u'Deposit', u'Transfer',
-                      u'Credit Card', u'Payment', u'Credit', u'Discount Stores', u'Service', u'Telecommunication Services', u'Music, Video and DVD',
-                      u'Financial', u'Computers and Electronics', u'Video Games', u'Warehouses and Wholesale Stores', u'Debit', u'Digital Purchase',
-                      u'Supermarkets and Groceries', u'Cable', u'Gas Stations', u'Department Stores', u'Bank Fees', u'Overdraft', u'Interest',
-                      u'Interest Charged', u'Wire Transfer', 'subscription_cat', u'Personal Care', u'ATM', u'Withdrawal', u'Pharmacies']
-    models = part_b(all_data)
+    # all_data = pd.read_csv('data.csv')
+    # global all_categories
+    # all_categories = [u'Bicycles', u'Shops', u'Food and Drink', u'Restaurants', u'Car Service', u'Ride Share', u'Travel',
+    #                   u'Airlines and Aviation Services', u'Coffee Shop', u'Gyms and Fitness Centers', u'Recreation', u'Deposit', u'Transfer',
+    #                   u'Credit Card', u'Payment', u'Credit', u'Discount Stores', u'Service', u'Telecommunication Services', u'Music, Video and DVD',
+    #                   u'Financial', u'Computers and Electronics', u'Video Games', u'Warehouses and Wholesale Stores', u'Debit', u'Digital Purchase',
+    #                   u'Supermarkets and Groceries', u'Cable', u'Gas Stations', u'Department Stores', u'Bank Fees', u'Overdraft', u'Interest',
+    #                   u'Interest Charged', u'Wire Transfer', 'subscription_cat', u'Personal Care', u'ATM', u'Withdrawal', u'Pharmacies']
+    # part_b(all_data)
     part_c()
