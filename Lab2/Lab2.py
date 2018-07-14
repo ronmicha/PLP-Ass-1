@@ -1,3 +1,4 @@
+import json
 from difflib import SequenceMatcher
 import numpy as np
 import pandas as pd
@@ -9,6 +10,11 @@ from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.base import clone
+import pickle
+from flask import Flask, request, jsonify
+
+flask_app = Flask(__name__)
 
 # region Column Names Enum
 CATEGORY = "category"
@@ -147,12 +153,14 @@ def same_attr_past_n_days(row, attr, n, compare_func):
 
 
 def part_b(data_df):
-    # build_subscription_model(data_df)
-    build_income_models(data_df)
+    subscription_model = build_subscription_model(data_df)
+    users_models = build_income_models(data_df)
+    models = {"subscription": subscription_model, "incomes": users_models}
+    pickle.dump(models, open('models', 'wb'))
+    return models
 
 
 def build_subscription_model(data_df):
-    # ToDo: When new transaction arrives, we need to calculate all following fields (Including categories):
     features_cols = all_categories + [SAME_CATEGORY_ID_LAST_MONTH, SAME_CATEGORY_ID_LAST_WEEK,
                                       SAME_AMOUNT_LAST_MONTH, SAME_AMOUNT_LAST_WEEK,
                                       SAME_NAME_LAST_MONTH, SAME_NAME_LAST_WEEK]
@@ -167,9 +175,10 @@ def build_subscription_model(data_df):
               "MLP": MLPClassifier(),
               "Decision Tree": DecisionTreeClassifier()}
 
+    # Todo choose a specific model and use it
     for name, model in models.items():
         model.fit(x_train, y_train)
-        print name, ":", model.score(x_test, y_test)
+        return model
 
 
 def build_income_models(data_df):
@@ -177,7 +186,8 @@ def build_income_models(data_df):
                                                           NUM_OF_INCOMES_LAST_MONTH]
     regression_models = {"SVR": SVR(), "SGD": SGDRegressor(), "MLP": MLPRegressor(), "Decision Tree": DecisionTreeRegressor(),
                          "Random Forest": RandomForestRegressor(), "Gradient Boost": GradientBoostingRegressor()}
-    # user_models = {}
+    user_models = {}
+    # ToDo choose a specific model and use it
     for name, model in regression_models.items():
         average_month_mse = 0
         average_week_mse = 0
@@ -191,25 +201,67 @@ def build_income_models(data_df):
             y_week_train, y_week_test = np.split(Y_week, [int(0.8 * len(Y_week.index))])
 
             # Month
-            model.fit(x_train, y_month_train)
-            average_month_mse += mean_absolute_error(y_month_test, model.predict(x_test))
+            month_model = clone(model)
+            month_model.fit(x_train, y_month_train)
+            average_month_mse += mean_squared_error(y_month_test, month_model.predict(x_test)) ** 0.5
+            user_models[u_id]['monthly'] = month_model
             # Week
-            model.fit(x_train, y_week_train)
-            average_week_mse += mean_absolute_error(y_week_test, model.predict(x_test))
+            week_model = clone(model)
+            week_model.fit(x_train, y_week_train)
+            average_week_mse += mean_squared_error(y_week_test, week_model.predict(x_test)) ** 0.5
+            user_models[u_id]['weekly'] = week_model
+        break
         print "Monthly avg MSE using", name, ":", average_month_mse / len(data_df[USER_ID].unique())
         print "Weekly avg MSE using", name, ":", average_week_mse / len(data_df[USER_ID].unique())
+    return user_models
 
 
 # endregion
 
 # region Part C
+def part_c():
+    flask_app.run()
+
+
+@flask_app.before_first_request
+def load_files():
+    global all_data, all_categories, models
+    all_data = pd.read_csv('data.csv')
+    all_categories = [u'Bicycles', u'Shops', u'Food and Drink', u'Restaurants', u'Car Service', u'Ride Share', u'Travel',
+                      u'Airlines and Aviation Services', u'Coffee Shop', u'Gyms and Fitness Centers', u'Recreation', u'Deposit', u'Transfer',
+                      u'Credit Card', u'Payment', u'Credit', u'Discount Stores', u'Service', u'Telecommunication Services', u'Music, Video and DVD',
+                      u'Financial', u'Computers and Electronics', u'Video Games', u'Warehouses and Wholesale Stores', u'Debit', u'Digital Purchase',
+                      u'Supermarkets and Groceries', u'Cable', u'Gas Stations', u'Department Stores', u'Bank Fees', u'Overdraft', u'Interest',
+                      u'Interest Charged', u'Wire Transfer', 'subscription_cat', u'Personal Care', u'ATM', u'Withdrawal', u'Pharmacies']
+    models = pickle.load(open('models', 'rb'))
+
+
+@flask_app.route('/', methods=['POST'])
+def get_predictions():
+    try:
+        data = json.loads(request.data)
+        assert 'trans' in data, "Missing transaction"
+        return jsonify(predict(data['trans']))
+    except Exception as e:
+        return repr(e), 500
+
+
+def predict(transaction):
+    transaction = ready_transaction_to_model(transaction)
+    return {
+        "subscription": models['subscription'].predict(transaction),
+        "weeklyIncome": models['incomes'][transaction[USER_ID]]['weekly'].predict(transaction),
+        "monthlyIncome": models['incomes'][transaction[USER_ID]]['monthly'].predict(transaction)
+    }
+
+
 def ready_transaction_to_model(transaction):
     # Turn categories array to discrete (add all categories and fill with 0/1)
     # Add columns : Weekday, Work Week & Month
     # Add Income column
     # Calculate all 'same' columns (total 6 columns)
     # Calculate total & num of incomes for week & month
-    pass
+    return transaction
 
 
 # endregion
@@ -228,4 +280,5 @@ if __name__ == '__main__':
                       u'Financial', u'Computers and Electronics', u'Video Games', u'Warehouses and Wholesale Stores', u'Debit', u'Digital Purchase',
                       u'Supermarkets and Groceries', u'Cable', u'Gas Stations', u'Department Stores', u'Bank Fees', u'Overdraft', u'Interest',
                       u'Interest Charged', u'Wire Transfer', 'subscription_cat', u'Personal Care', u'ATM', u'Withdrawal', u'Pharmacies']
-    part_b(all_data)
+    models = part_b(all_data)
+    part_c()
