@@ -1,7 +1,7 @@
 from difflib import SequenceMatcher
 import numpy as np
 import pandas as pd
-from pandas.tseries.offsets import MonthEnd
+from pandas.tseries.offsets import MonthEnd, MonthBegin
 from sklearn.svm import SVC
 from sklearn.linear_model import SGDClassifier
 from sklearn.naive_bayes import GaussianNB
@@ -12,12 +12,16 @@ from sklearn.tree import DecisionTreeClassifier
 CATEGORY = "category"
 USERID = "userId"
 WEEKDAY = "weekday"
+WORK_WEEK = "work_week"
+MONTH = "month"
 DATE = "date"
 INCOME = "income"
 AMOUNT = "amount"
 NAME = "name"
 CATEGORYID = "categoryId"
 SUBSCRIPTION = "subscription"
+WEEKLY_INCOME = "weekly_income"
+MONTHLY_INCOME = "monthly_income"
 TOTAL_INCOMES_LAST_WEEK = "total_incomes_last_week"
 NUM_OF_INCOMES_LAST_WEEK = "num_of_incomes_last_week"
 TOTAL_INCOMES_LAST_MONTH = "total_incomes_last_month"
@@ -51,6 +55,8 @@ def part_a():
     global transactions_df
 
     transactions_df[WEEKDAY] = pd.to_datetime(transactions_df[DATE]).apply(lambda x: x.weekday())
+    transactions_df[WORK_WEEK] = pd.to_datetime(transactions_df[DATE]).apply(lambda x: x.isocalendar()[1])
+    transactions_df[MONTH] = pd.to_datetime(transactions_df[DATE]).apply(lambda x: x.month)
     categories_df = transactions_df[CATEGORY].apply(
         lambda x: pd.Series({k if k.lower() != 'subscription' else 'subscription_cat': 1 for v, k in enumerate(x)})).fillna(0)
     all_categories = list(categories_df.columns)
@@ -59,12 +65,14 @@ def part_a():
     additional_features_data = []
 
     for index, row in transactions_df.iterrows():
+        # Income features:
         last_week_incomes = get_last_n_days_incomes(row, 7)
         last_month_incomes = get_last_n_days_incomes(row, 30)
         total_incomes_last_week = round(-last_week_incomes[AMOUNT].sum(), 2) if not last_week_incomes.empty else None
         num_of_incomes_last_week = len(last_week_incomes.index)
         total_incomes_last_month = round(-last_month_incomes[AMOUNT].sum(), 2) if not last_month_incomes.empty else None
         num_of_incomes_last_month = len(last_month_incomes.index)
+        # Subscription features:
         same_name_last_week = same_attr_past_n_days(row, NAME, 7, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
         same_name_last_month = same_attr_past_n_days(row, NAME, 30, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
         same_amount_last_week = same_attr_past_n_days(row, AMOUNT, 7, lambda a, b: abs(a - b) <= 20)
@@ -92,22 +100,31 @@ def part_a():
                                                                              SAME_AMOUNT_LAST_MONTH,
                                                                              SAME_CATEGORYID_LAST_WEEK,
                                                                              SAME_CATEGORYID_LAST_MONTH])
-
+    # Calculate Subscription target values:
     all_data_df = pd.concat([transactions_df, additional_features_df], axis=1)
     all_data_df[SUBSCRIPTION] = \
         (all_data_df[SAME_NAME_LAST_WEEK] & all_data_df[SAME_AMOUNT_LAST_WEEK] & all_data_df[SAME_CATEGORYID_LAST_WEEK]) | \
         (all_data_df[SAME_NAME_LAST_MONTH] & all_data_df[SAME_AMOUNT_LAST_MONTH] & all_data_df[SAME_CATEGORYID_LAST_MONTH])
+    # Calculate Income target values:
+    user_weekly_income = all_data_df[all_data_df[INCOME]][[USERID, WORK_WEEK, AMOUNT]].groupby(by=[USERID, WORK_WEEK], as_index=False).sum()
+    user_weekly_income.rename(columns={AMOUNT: WEEKLY_INCOME}, inplace=True)
+    user_weekly_income[WEEKLY_INCOME] = -user_weekly_income[WEEKLY_INCOME]
+    user_monthly_income = all_data_df[all_data_df[INCOME]][[USERID, MONTH, AMOUNT]].groupby(by=[USERID, MONTH], as_index=False).sum()
+    user_monthly_income.rename(columns={AMOUNT: MONTHLY_INCOME}, inplace=True)
+    user_monthly_income[MONTHLY_INCOME] = -user_monthly_income[MONTHLY_INCOME]
+    all_data_df = all_data_df.merge(user_weekly_income, on=[USERID, WORK_WEEK])
+    all_data_df = all_data_df.merge(user_monthly_income, on=[USERID, MONTH])
 
     return all_data_df
 
 
 def get_last_n_days_incomes(row, n):
     if n == 7:
-        start_date = row[DATE] - pd.DateOffset(days=7 + int(row[WEEKDAY]))
-        end_date = start_date + pd.DateOffset(days=6)
+        start_date = row[DATE] - pd.DateOffset(days=int(row[WEEKDAY]))
+        end_date = row[DATE]
     else:  # n == 30
-        start_date = row[DATE] - pd.DateOffset(months=1, days=int(row[WEEKDAY]))
-        end_date = start_date + MonthEnd()
+        start_date = row[DATE] - MonthBegin()  # pd.DateOffset(months=1, days=int(row[WEEKDAY]))
+        end_date = row[DATE]
     last_n_days_incomes = transactions_df[(transactions_df[USERID] == row[USERID]) &
                                           (transactions_df[INCOME]) &
                                           (transactions_df[DATE] >= start_date) &
@@ -129,6 +146,7 @@ def same_attr_past_n_days(row, attr, n, compare_func):
 
 def part_b(data_df):
     build_subscription_model(data_df)
+    build_income_models(data_df)
 
 
 def build_subscription_model(data_df):
@@ -151,6 +169,10 @@ def build_subscription_model(data_df):
         print name, ":", model.score(x_test, y_test)
 
 
+def build_income_models(data_df):
+    pass
+
+
 # endregion
 
 
@@ -161,6 +183,7 @@ if __name__ == '__main__':
 
     # debug
     all_data = pd.read_csv('data.csv')
+
     global all_categories
     all_categories = [u'Bicycles', u'Shops', u'Food and Drink', u'Restaurants', u'Car Service', u'Ride Share', u'Travel',
                       u'Airlines and Aviation Services', u'Coffee Shop', u'Gyms and Fitness Centers', u'Recreation', u'Deposit', u'Transfer',
