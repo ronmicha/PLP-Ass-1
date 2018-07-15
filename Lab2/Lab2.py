@@ -34,6 +34,7 @@ TOTAL_INCOMES_LAST_WEEK = "total_incomes_last_week"
 NUM_OF_INCOMES_LAST_WEEK = "num_of_incomes_last_week"
 TOTAL_INCOMES_LAST_MONTH = "total_incomes_last_month"
 NUM_OF_INCOMES_LAST_MONTH = "num_of_incomes_last_month"
+
 SAME_NAME_LAST_WEEK = "same_name_last_week"
 SAME_NAME_LAST_MONTH = "same_name_last_month"
 SAME_CATEGORY_ID_LAST_WEEK = "same_categoryId_last_week"
@@ -72,6 +73,7 @@ def part_a():
     transactions_df = pd.concat([transactions_df, categories_df], axis=1)
     transactions_df[INCOME] = transactions_df[AMOUNT] < 0
     additional_features_data = []
+    features_for_subscription_label = []
 
     for index, row in transactions_df.iterrows():
         # Income features:
@@ -81,40 +83,37 @@ def part_a():
         num_of_incomes_last_week = len(last_week_incomes.index)
         total_incomes_last_month = round(-last_month_incomes[AMOUNT].sum(), 2) if not last_month_incomes.empty else 0
         num_of_incomes_last_month = len(last_month_incomes.index)
-        # Subscription features:
-        same_name_last_week = same_attr_past_n_days(row, NAME, 7, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
-        same_name_last_month = same_attr_past_n_days(row, NAME, 30, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
-        same_amount_last_week = same_attr_past_n_days(row, AMOUNT, 7, lambda a, b: abs(a - b) <= 20)
-        same_amount_last_month = same_attr_past_n_days(row, AMOUNT, 30, lambda a, b: abs(a - b) <= 20)
-        same_categoryid_last_week = same_attr_past_n_days(row, CATEGORY_ID, 7, lambda a, b: a == b)
-        same_categoryid_last_month = same_attr_past_n_days(row, CATEGORY_ID, 30, lambda a, b: a == b)
-
+        # Subscription features - to label only:
+        # same_name_last_week = same_attr_past_n_days(row, NAME, 7, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
+        # same_name_last_month = same_attr_past_n_days(row, NAME, 30, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
+        same_amount_last_week = same_attr_n_days_ago(row, AMOUNT, 7, lambda a, b: abs(a - b) <= 20)
+        same_amount_last_month = same_attr_n_days_ago(row, AMOUNT, 30, lambda a, b: abs(a - b) <= 20)
+        same_categoryid_last_week = same_attr_n_days_ago(row, CATEGORY_ID, 7, lambda a, b: a == b)
+        same_categoryid_last_month = same_attr_n_days_ago(row, CATEGORY_ID, 30, lambda a, b: a == b)
+        # This data will be used in the model:
         additional_features_data.append([total_incomes_last_week,
                                          num_of_incomes_last_week,
                                          total_incomes_last_month,
-                                         num_of_incomes_last_month,
-                                         same_name_last_week,
-                                         same_name_last_month,
-                                         same_amount_last_week,
-                                         same_amount_last_month,
-                                         same_categoryid_last_week,
-                                         same_categoryid_last_month])
+                                         num_of_incomes_last_month])
+        # This data won't be used in the model, only to label the Subscription column:
+        features_for_subscription_label.append([same_amount_last_week,
+                                                same_amount_last_month,
+                                                same_categoryid_last_week,
+                                                same_categoryid_last_month])
     additional_features_df = pd.DataFrame(additional_features_data, columns=[TOTAL_INCOMES_LAST_WEEK,
                                                                              NUM_OF_INCOMES_LAST_WEEK,
                                                                              TOTAL_INCOMES_LAST_MONTH,
-                                                                             NUM_OF_INCOMES_LAST_MONTH,
-                                                                             SAME_NAME_LAST_WEEK,
-                                                                             SAME_NAME_LAST_MONTH,
-                                                                             SAME_AMOUNT_LAST_WEEK,
-                                                                             SAME_AMOUNT_LAST_MONTH,
-                                                                             SAME_CATEGORY_ID_LAST_WEEK,
-                                                                             SAME_CATEGORY_ID_LAST_MONTH])
+                                                                             NUM_OF_INCOMES_LAST_MONTH])
+    features_for_subscription_label_df = pd.DataFrame(features_for_subscription_label, columns=[SAME_AMOUNT_LAST_WEEK,
+                                                                                                SAME_AMOUNT_LAST_MONTH,
+                                                                                                SAME_CATEGORY_ID_LAST_WEEK,
+                                                                                                SAME_CATEGORY_ID_LAST_MONTH])
 
     # Calculate Subscription target values:
     all_data_df = pd.concat([transactions_df, additional_features_df], axis=1)
     all_data_df[SUBSCRIPTION] = \
-        (all_data_df[SAME_NAME_LAST_WEEK] & all_data_df[SAME_AMOUNT_LAST_WEEK] & all_data_df[SAME_CATEGORY_ID_LAST_WEEK]) | \
-        (all_data_df[SAME_NAME_LAST_MONTH] & all_data_df[SAME_AMOUNT_LAST_MONTH] & all_data_df[SAME_CATEGORY_ID_LAST_MONTH])
+        (features_for_subscription_label_df[SAME_AMOUNT_LAST_WEEK] & features_for_subscription_label_df[SAME_CATEGORY_ID_LAST_WEEK]) | \
+        (features_for_subscription_label_df[SAME_AMOUNT_LAST_MONTH] & features_for_subscription_label_df[SAME_CATEGORY_ID_LAST_MONTH])
     # Calculate Income target values:
     user_weekly_income = all_data_df[all_data_df[INCOME]][[USER_ID, WORK_WEEK, AMOUNT]].groupby(by=[USER_ID, WORK_WEEK], as_index=False).sum()
     user_weekly_income.rename(columns={AMOUNT: WEEKLY_INCOME}, inplace=True)
@@ -142,7 +141,7 @@ def get_last_n_days_incomes(row, n):
     return last_n_days_incomes
 
 
-def same_attr_past_n_days(row, attr, n, compare_func):
+def same_attr_n_days_ago(row, attr, n, compare_func):
     last_n_days_transaction = transactions_df[(transactions_df[USER_ID] == row[USER_ID]) &
                                               (transactions_df[INCOME] == False) &
                                               (transactions_df[DATE] == row[DATE] - pd.DateOffset(days=n))]
@@ -162,9 +161,7 @@ def part_b(data_df):
 
 
 def build_subscription_model(data_df):
-    features_cols = all_categories + [SAME_CATEGORY_ID_LAST_MONTH, SAME_CATEGORY_ID_LAST_WEEK,
-                                      SAME_AMOUNT_LAST_MONTH, SAME_AMOUNT_LAST_WEEK,
-                                      SAME_NAME_LAST_MONTH, SAME_NAME_LAST_WEEK]
+    features_cols = all_categories
     X = data_df[features_cols]
     Y = data_df[SUBSCRIPTION]
     x_train, x_test = np.split(X, [int(0.8 * len(X.index))])
@@ -276,7 +273,6 @@ def ready_transaction_to_model(data):
     trans_df[MONTH] = pd.to_datetime(trans_df[DATE]).apply(lambda x: x.month)
     # Add Income column
     trans_df[INCOME] = trans_df[AMOUNT] < 0
-    # Calculate all 'same' columns (total 6 columns)
     # Calculate total & num of incomes for week & month
     last_week_incomes = get_last_n_days_incomes(trans_df.iloc[0], 7)
     last_month_incomes = get_last_n_days_incomes(trans_df.iloc[0], 30)
@@ -284,12 +280,6 @@ def ready_transaction_to_model(data):
     trans_df[NUM_OF_INCOMES_LAST_WEEK] = len(last_week_incomes.index)
     trans_df[TOTAL_INCOMES_LAST_MONTH] = round(-last_month_incomes[AMOUNT].sum(), 2) if not last_month_incomes.empty else 0
     trans_df[NUM_OF_INCOMES_LAST_MONTH] = len(last_month_incomes.index)
-    trans_df[SAME_NAME_LAST_WEEK] = same_attr_past_n_days(trans_df.iloc[0], NAME, 7, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
-    trans_df[SAME_NAME_LAST_MONTH] = same_attr_past_n_days(trans_df.iloc[0], NAME, 30, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
-    trans_df[SAME_AMOUNT_LAST_WEEK] = same_attr_past_n_days(trans_df.iloc[0], AMOUNT, 7, lambda a, b: abs(a - b) <= 20)
-    trans_df[SAME_AMOUNT_LAST_MONTH] = same_attr_past_n_days(trans_df.iloc[0], AMOUNT, 30, lambda a, b: abs(a - b) <= 20)
-    trans_df[SAME_CATEGORY_ID_LAST_WEEK] = same_attr_past_n_days(trans_df.iloc[0], CATEGORY_ID, 7, lambda a, b: a == b)
-    trans_df[SAME_CATEGORY_ID_LAST_MONTH] = same_attr_past_n_days(trans_df.iloc[0], CATEGORY_ID, 30, lambda a, b: a == b)
     return trans_df
 
 
@@ -301,13 +291,13 @@ if __name__ == '__main__':
     # all_data.to_csv('data.csv', index=False)
 
     # debug
-    # all_data = pd.read_csv('data.csv')
-    # global all_categories
-    # all_categories = [u'Bicycles', u'Shops', u'Food and Drink', u'Restaurants', u'Car Service', u'Ride Share', u'Travel',
-    #                   u'Airlines and Aviation Services', u'Coffee Shop', u'Gyms and Fitness Centers', u'Recreation', u'Deposit', u'Transfer',
-    #                   u'Credit Card', u'Payment', u'Credit', u'Discount Stores', u'Service', u'Telecommunication Services', u'Music, Video and DVD',
-    #                   u'Financial', u'Computers and Electronics', u'Video Games', u'Warehouses and Wholesale Stores', u'Debit', u'Digital Purchase',
-    #                   u'Supermarkets and Groceries', u'Cable', u'Gas Stations', u'Department Stores', u'Bank Fees', u'Overdraft', u'Interest',
-    #                   u'Interest Charged', u'Wire Transfer', 'subscription_cat', u'Personal Care', u'ATM', u'Withdrawal', u'Pharmacies']
-    # part_b(all_data)
+    all_data = pd.read_csv('data.csv')
+    global all_categories
+    all_categories = [u'Bicycles', u'Shops', u'Food and Drink', u'Restaurants', u'Car Service', u'Ride Share', u'Travel',
+                      u'Airlines and Aviation Services', u'Coffee Shop', u'Gyms and Fitness Centers', u'Recreation', u'Deposit', u'Transfer',
+                      u'Credit Card', u'Payment', u'Credit', u'Discount Stores', u'Service', u'Telecommunication Services', u'Music, Video and DVD',
+                      u'Financial', u'Computers and Electronics', u'Video Games', u'Warehouses and Wholesale Stores', u'Debit', u'Digital Purchase',
+                      u'Supermarkets and Groceries', u'Cable', u'Gas Stations', u'Department Stores', u'Bank Fees', u'Overdraft', u'Interest',
+                      u'Interest Charged', u'Wire Transfer', 'subscription_cat', u'Personal Care', u'ATM', u'Withdrawal', u'Pharmacies']
+    part_b(all_data)
     part_c()
