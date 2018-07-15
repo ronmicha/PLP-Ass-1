@@ -12,6 +12,7 @@ from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.base import clone
+from sklearn.metrics import precision_score
 from flask import Flask, request, jsonify
 
 flask_app = Flask(__name__)
@@ -23,6 +24,7 @@ WEEKDAY = "weekday"
 WORK_WEEK = "work_week"
 MONTH = "month"
 DATE = "date"
+DAY = "day"
 INCOME = "income"
 AMOUNT = "amount"
 NAME = "name"
@@ -67,6 +69,7 @@ def part_a():
     transactions_df[WEEKDAY] = pd.to_datetime(transactions_df[DATE]).apply(lambda x: x.weekday())
     transactions_df[WORK_WEEK] = pd.to_datetime(transactions_df[DATE]).apply(lambda x: x.isocalendar()[1])
     transactions_df[MONTH] = pd.to_datetime(transactions_df[DATE]).apply(lambda x: x.month)
+    transactions_df[DAY] = pd.to_datetime(transactions_df[DATE]).apply(lambda x: x.day)
     categories_df = transactions_df[CATEGORY].apply(
         lambda x: pd.Series({k if k.lower() != 'subscription' else 'subscription_cat': 1 for v, k in enumerate(x)})).fillna(0)
     all_categories = list(categories_df.columns)
@@ -167,16 +170,18 @@ def build_subscription_model(data_df):
     x_train, x_test = np.split(X, [int(0.8 * len(X.index))])
     y_train, y_test = np.split(Y, [int(0.8 * len(Y.index))])
 
-    classification_models = {"SVC": SVC(),
-                             "SGD": SGDClassifier(),
-                             "Naive Bayes": GaussianNB(),
-                             "MLP": MLPClassifier(),
-                             "Decision Tree": DecisionTreeClassifier()}
+    classification_models = {
+        "SVC": SVC(),
+        "SGD": SGDClassifier(),
+        "Naive Bayes": GaussianNB(),
+        "MLP": MLPClassifier(),
+        "Decision Tree": DecisionTreeClassifier()}
 
     # Todo choose a specific model and use it
     for name, model in classification_models.items():
         model.fit(x_train, y_train)
-        return model
+        print "Precision for subscription using", name, precision_score(y_test, model.predict(x_test))
+    return model
 
 
 def build_income_models(data_df):
@@ -196,24 +201,28 @@ def build_income_models(data_df):
         for user_id in data_df[USER_ID].unique():
             user_models[user_id] = {}
             user_df = data_df[(data_df[USER_ID] == user_id) & (data_df[INCOME])]
-            X = user_df[features_cols]
-            Y_month = user_df[MONTHLY_INCOME]
-            Y_week = user_df[WEEKLY_INCOME]
-            x_train, x_test = np.split(X, [int(0.8 * len(X.index))])
+            # Sort from beginning to end of month/week
+            X_month = user_df.sort_values(DAY)[features_cols]
+            X_week = user_df.sort_values(WEEKDAY)[features_cols]
+            Y_month = user_df.sort_values(DAY)[MONTHLY_INCOME]
+            Y_week = user_df.sort_values(WEEKDAY)[WEEKLY_INCOME]
+            x_train_month, x_test_month = np.split(X_month, [int(0.8 * len(X_month.index))])
+            x_train_week, x_test_week = np.split(X_week, [int(0.8 * len(X_week.index))])
             y_month_train, y_month_test = np.split(Y_month, [int(0.8 * len(Y_month.index))])
             y_week_train, y_week_test = np.split(Y_week, [int(0.8 * len(Y_week.index))])
 
             # Month
             month_model = clone(model)
-            month_model.fit(x_train, y_month_train)
-            average_month_mse += mean_squared_error(y_month_test, month_model.predict(x_test)) ** 0.5
-            print "User ID:", user_id, "monthly using", name, "Mean Error:", mean_squared_error(y_month_test, month_model.predict(x_test)) ** 0.5
+            month_model.fit(x_train_month, y_month_train)
+            average_month_mse += mean_squared_error(y_month_test, month_model.predict(x_test_month)) ** 0.5
+            print "User ID:", user_id, "monthly using", name, "Mean Error:", mean_squared_error(y_month_test,
+                                                                                                month_model.predict(x_test_month)) ** 0.5
             user_models[user_id]['monthly'] = month_model
             # Week
             week_model = clone(model)
-            week_model.fit(x_train, y_week_train)
-            average_week_mse += mean_squared_error(y_week_test, week_model.predict(x_test)) ** 0.5
-            print "User ID:", user_id, "weekly using", name, "Mean Error:", mean_squared_error(y_week_test, week_model.predict(x_test)) ** 0.5
+            week_model.fit(x_train_week, y_week_train)
+            average_week_mse += mean_squared_error(y_week_test, week_model.predict(x_test_week)) ** 0.5
+            print "User ID:", user_id, "weekly using", name, "Mean Error:", mean_squared_error(y_week_test, week_model.predict(x_test_week)) ** 0.5
             user_models[user_id]['weekly'] = week_model
         # print "Monthly avg MSE using", name, ":", average_month_mse / len(data_df[USER_ID].unique())
         # print "Weekly avg MSE using", name, ":", average_week_mse / len(data_df[USER_ID].unique())
@@ -253,11 +262,11 @@ def get_predictions():
 
 def predict(data):
     transaction = ready_transaction_to_model(data)
+    # ToDo use relevant columns for each model:
     income_features_cols = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_WEEK, NUM_OF_INCOMES_LAST_WEEK,
                                                                  TOTAL_INCOMES_LAST_MONTH, NUM_OF_INCOMES_LAST_MONTH]
     sub_features_cols = all_categories
     return {
-        # ToDo use relevant columns for each model:
         "subscription": bool(models['subscription'].predict(transaction[sub_features_cols])[0]),
         "weeklyIncome": float(models['incomes'][transaction[USER_ID][0]]['weekly'].predict(transaction[income_features_cols])[0]),
         "monthlyIncome": float(models['incomes'][transaction[USER_ID][0]]['monthly'].predict(transaction[income_features_cols])[0])
@@ -275,6 +284,7 @@ def ready_transaction_to_model(data):
     trans_df[WEEKDAY] = pd.to_datetime(trans_df[DATE]).apply(lambda x: x.weekday())
     trans_df[WORK_WEEK] = pd.to_datetime(trans_df[DATE]).apply(lambda x: x.isocalendar()[1])
     trans_df[MONTH] = pd.to_datetime(trans_df[DATE]).apply(lambda x: x.month)
+    trans_df[DAY] = pd.to_datetime(trans_df[DATE]).apply(lambda x: x.day)
     # Add Income column
     trans_df[INCOME] = trans_df[AMOUNT] < 0
     # Calculate total & num of incomes for week & month
@@ -291,8 +301,8 @@ def ready_transaction_to_model(data):
 
 if __name__ == '__main__':
     read_users_and_transactions_files("./users.json", "./transactions_clean.json")
-    # all_data = part_a()
-    # all_data.to_csv('data.csv', index=False)
+    all_data = part_a()
+    all_data.to_csv('data.csv', index=False)
 
     # debug
     all_data = pd.read_csv('data.csv')
@@ -303,5 +313,7 @@ if __name__ == '__main__':
                       u'Financial', u'Computers and Electronics', u'Video Games', u'Warehouses and Wholesale Stores', u'Debit', u'Digital Purchase',
                       u'Supermarkets and Groceries', u'Cable', u'Gas Stations', u'Department Stores', u'Bank Fees', u'Overdraft', u'Interest',
                       u'Interest Charged', u'Wire Transfer', 'subscription_cat', u'Personal Care', u'ATM', u'Withdrawal', u'Pharmacies']
-    # part_b(all_data)
+    # end debug
+
+    part_b(all_data)
     part_c()
