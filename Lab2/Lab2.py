@@ -207,15 +207,16 @@ def build_income_models(data_df):
             month_model = clone(model)
             month_model.fit(x_train, y_month_train)
             average_month_mse += mean_squared_error(y_month_test, month_model.predict(x_test)) ** 0.5
+            print "User ID:", user_id, "monthly using", name, "Mean Error:", mean_squared_error(y_month_test, month_model.predict(x_test)) ** 0.5
             user_models[user_id]['monthly'] = month_model
             # Week
             week_model = clone(model)
             week_model.fit(x_train, y_week_train)
             average_week_mse += mean_squared_error(y_week_test, week_model.predict(x_test)) ** 0.5
+            print "User ID:", user_id, "weekly using", name, "Mean Error:", mean_squared_error(y_week_test, week_model.predict(x_test)) ** 0.5
             user_models[user_id]['weekly'] = week_model
-        break
-        print "Monthly avg MSE using", name, ":", average_month_mse / len(data_df[USER_ID].unique())
-        print "Weekly avg MSE using", name, ":", average_week_mse / len(data_df[USER_ID].unique())
+        # print "Monthly avg MSE using", name, ":", average_month_mse / len(data_df[USER_ID].unique())
+        # print "Weekly avg MSE using", name, ":", average_week_mse / len(data_df[USER_ID].unique())
     return user_models
 
 
@@ -252,11 +253,14 @@ def get_predictions():
 
 def predict(data):
     transaction = ready_transaction_to_model(data)
+    income_features_cols = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_WEEK, NUM_OF_INCOMES_LAST_WEEK,
+                                                                 TOTAL_INCOMES_LAST_MONTH, NUM_OF_INCOMES_LAST_MONTH]
+    sub_features_cols = all_categories
     return {
         # ToDo use relevant columns for each model:
-        "subscription": models['subscription'].predict(transaction),
-        "weeklyIncome": models['incomes'][transaction[USER_ID]]['weekly'].predict(transaction),
-        "monthlyIncome": models['incomes'][transaction[USER_ID]]['monthly'].predict(transaction)
+        "subscription": bool(models['subscription'].predict(transaction[sub_features_cols])[0]),
+        "weeklyIncome": float(models['incomes'][transaction[USER_ID][0]]['weekly'].predict(transaction[income_features_cols])[0]),
+        "monthlyIncome": float(models['incomes'][transaction[USER_ID][0]]['monthly'].predict(transaction[income_features_cols])[0])
     }
 
 
@@ -299,5 +303,5 @@ if __name__ == '__main__':
                       u'Financial', u'Computers and Electronics', u'Video Games', u'Warehouses and Wholesale Stores', u'Debit', u'Digital Purchase',
                       u'Supermarkets and Groceries', u'Cable', u'Gas Stations', u'Department Stores', u'Bank Fees', u'Overdraft', u'Interest',
                       u'Interest Charged', u'Wire Transfer', 'subscription_cat', u'Personal Care', u'ATM', u'Withdrawal', u'Pharmacies']
-    part_b(all_data)
+    # part_b(all_data)
     part_c()
