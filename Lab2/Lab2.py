@@ -49,6 +49,11 @@ users_df = None
 transactions_df = None
 all_categories = None
 models = None
+monthly_income_prediction_features = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_WEEK, NUM_OF_INCOMES_LAST_WEEK,
+                                                                           TOTAL_INCOMES_LAST_MONTH, NUM_OF_INCOMES_LAST_MONTH]
+weekly_income_prediction_features = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_WEEK, NUM_OF_INCOMES_LAST_WEEK,
+                                                                          TOTAL_INCOMES_LAST_MONTH, NUM_OF_INCOMES_LAST_MONTH]
+subscription_prediction_features = all_categories
 
 
 # Original "users.json" had invalid structure, I modified it to be valid
@@ -166,8 +171,7 @@ def part_b(data_df):
 
 
 def build_subscription_model(data_df):
-    features_cols = all_categories
-    X = data_df[features_cols]
+    X = data_df[subscription_prediction_features]
     Y = data_df[SUBSCRIPTION]
     x_train, x_test = np.split(X, [int(0.8 * len(X.index))])
     y_train, y_test = np.split(Y, [int(0.8 * len(Y.index))])
@@ -187,8 +191,6 @@ def build_subscription_model(data_df):
 
 
 def build_income_models(data_df):
-    features_cols = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_WEEK, NUM_OF_INCOMES_LAST_WEEK,
-                                                          TOTAL_INCOMES_LAST_MONTH, NUM_OF_INCOMES_LAST_MONTH]
     regression_models = {"SVR": SVR(),
                          "SGD": SGDRegressor(),
                          "MLP": MLPRegressor(),
@@ -204,8 +206,8 @@ def build_income_models(data_df):
             user_models[user_id] = {}
             user_df = data_df[(data_df[USER_ID] == user_id) & (data_df[INCOME])]
             # Sort from beginning to end of month/week
-            X_month = user_df.sort_values(DAY)[features_cols]
-            X_week = user_df.sort_values(WEEKDAY)[features_cols]
+            X_month = user_df.sort_values(DAY)[monthly_income_prediction_features]
+            X_week = user_df.sort_values(WEEKDAY)[weekly_income_prediction_features]
             Y_month = user_df.sort_values(DAY)[MONTHLY_INCOME]
             Y_week = user_df.sort_values(WEEKDAY)[WEEKLY_INCOME]
             x_train_month, x_test_month = np.split(X_month, [int(0.8 * len(X_month.index))])
@@ -265,13 +267,10 @@ def get_predictions():
 def predict(data):
     transaction = ready_transaction_to_model(data)
     # ToDo use relevant columns for each model:
-    income_features_cols = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_WEEK, NUM_OF_INCOMES_LAST_WEEK,
-                                                                 TOTAL_INCOMES_LAST_MONTH, NUM_OF_INCOMES_LAST_MONTH]
-    sub_features_cols = all_categories
     return {
-        "subscription": bool(models['subscription'].predict(transaction[sub_features_cols])[0]),
-        "weeklyIncome": float(models['incomes'][transaction[USER_ID][0]]['weekly'].predict(transaction[income_features_cols])[0]),
-        "monthlyIncome": float(models['incomes'][transaction[USER_ID][0]]['monthly'].predict(transaction[income_features_cols])[0])
+        "subscription": bool(models['subscription'].predict(transaction[subscription_prediction_features])[0]),
+        "weeklyIncome": float(models['incomes'][transaction[USER_ID][0]]['weekly'].predict(transaction[weekly_income_prediction_features])[0]),
+        "monthlyIncome": float(models['incomes'][transaction[USER_ID][0]]['monthly'].predict(transaction[monthly_income_prediction_features])[0])
     }
 
 
