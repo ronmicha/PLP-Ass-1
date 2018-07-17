@@ -68,8 +68,10 @@ all_categories = [u'Bicycles', u'Shops', u'Food and Drink', u'Restaurants', u'Ca
                   u'Financial', u'Computers and Electronics', u'Video Games', u'Warehouses and Wholesale Stores', u'Debit', u'Digital Purchase',
                   u'Supermarkets and Groceries', u'Cable', u'Gas Stations', u'Department Stores', u'Bank Fees', u'Overdraft', u'Interest',
                   u'Interest Charged', u'Wire Transfer', 'subscription_cat', u'Personal Care', u'ATM', u'Withdrawal', u'Pharmacies']
-monthly_income_prediction_features = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_WEEK, NUM_OF_INCOMES_LAST_WEEK]
-weekly_income_prediction_features = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_MONTH, NUM_OF_INCOMES_LAST_MONTH]
+weekly_income_prediction_features = [WORK_WEEK, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_MONTH, NUM_OF_INCOMES_LAST_MONTH,
+                                                                   MEAN_INCOME_LAST_WEEK] + all_categories
+monthly_income_prediction_features = [DAY, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_WEEK, NUM_OF_INCOMES_LAST_WEEK,
+                                                              MEAN_INCOME_LAST_MONTH] + all_categories
 subscription_prediction_features = all_categories + \
                                    [LAST_MONTH_CHARGE_SAME_CATEGORY, LAST_MONTH_CHARGE_SAME_PRICE, LAST_MONTH_SAME_NAME] + \
                                    [LAST_WEEK_CHARGE_SAME_CATEGORY, LAST_WEEK_CHARGE_SAME_PRICE, LAST_WEEK_SAME_NAME]
@@ -104,8 +106,8 @@ def part_a(data_df, fill_target_values=False):
     for index, row in data_df.iterrows():
         # Discrediting Categories:
         categories_data = [1 if category in row[CATEGORY] else 0 for category in all_categories]
-        last_week_charges = get_last_n_days(row, 7, incomes=False)
-        last_month_charges = get_last_n_days(row, 30, incomes=False)
+        last_week_charges = get_from_start_of_week_or_month(row, 7, incomes=False)
+        last_month_charges = get_from_start_of_week_or_month(row, 30, incomes=False)
         # Subscription features:
         last_week_charge_same_price_df = last_week_charges[abs(last_week_charges[AMOUNT] - row[AMOUNT]) < 20]
         last_month_charge_same_price_df = last_month_charges[abs(last_month_charges[AMOUNT] - row[AMOUNT]) < 20]
@@ -127,14 +129,14 @@ def part_a(data_df, fill_target_values=False):
         # # last_week_same_name_avg_amount = last_week_same_name_df[AMOUNT].mean()
         # # last_month_same_name_avg_amount = last_month_same_name_df[AMOUNT].mean()
         # Income features:
-        last_week_incomes = get_last_n_days(row, 7)
-        last_month_incomes = get_last_n_days(row, 30)
+        last_week_incomes = get_from_start_of_week_or_month(row, 7)
+        last_month_incomes = get_from_start_of_week_or_month(row, 30)
         total_incomes_last_week = round(-last_week_incomes[AMOUNT].sum(), 2) if not last_week_incomes.empty else 0
         total_incomes_last_month = round(-last_month_incomes[AMOUNT].sum(), 2) if not last_month_incomes.empty else 0
         num_of_incomes_last_week = len(last_week_incomes.index)
         num_of_incomes_last_month = len(last_month_incomes.index)
-        mean_income_last_week = -last_week_incomes[AMOUNT].mean()
-        mean_income_last_month = -last_month_incomes[AMOUNT].mean()
+        mean_income_last_week = -last_week_incomes[AMOUNT].mean() if not last_week_incomes.empty else 0
+        mean_income_last_month = -last_month_incomes[AMOUNT].mean() if not last_month_incomes.empty else 0
         # This data will be used in the model:
         additional_features_data.append([  # Income:
                                             total_incomes_last_week,
@@ -200,18 +202,26 @@ def part_a(data_df, fill_target_values=False):
     return all_data_df
 
 
-def get_last_n_days(row, n, incomes=True):
+def get_from_start_of_week_or_month(row, n, incomes=True):
     if n == 7:
-        start_date = row[DATE] - pd.DateOffset(days=int(row[WEEKDAY]))
-        end_date = row[DATE] - pd.DateOffset(days=1)
+        if row[WEEKDAY] != 0:
+            start_date = row[DATE] - pd.DateOffset(days=int(row[WEEKDAY]))
+            end_date = row[DATE] - pd.DateOffset(days=1)
+        else:  # Look at previous week
+            start_date = row[DATE] - pd.DateOffset(days=7)
+            end_date = row[DATE] - pd.DateOffset(days=1)
     else:  # n == 30
-        start_date = row[DATE] - MonthBegin()  # pd.DateOffset(months=1, days=int(row[WEEKDAY]))
-        end_date = row[DATE] - pd.DateOffset(days=1)
-    last_n_days_incomes = transactions_df[(transactions_df[USER_ID] == row[USER_ID]) &
-                                          (transactions_df[INCOME] == incomes) &
-                                          (transactions_df[DATE] >= start_date) &
-                                          (transactions_df[DATE] <= end_date)]
-    return last_n_days_incomes
+        if row[DAY] != 1:
+            start_date = row[DATE] - MonthBegin()
+            end_date = row[DATE] - pd.DateOffset(days=1)
+        else:  # Look at previous month
+            start_date = row[DATE] - pd.DateOffset(months=1)
+            end_date = row[DATE] - pd.DateOffset(days=1)
+    last_n_days = transactions_df[(transactions_df[USER_ID] == row[USER_ID]) &
+                                  (transactions_df[INCOME] == incomes) &
+                                  (transactions_df[DATE] >= start_date) &
+                                  (transactions_df[DATE] <= end_date)]
+    return last_n_days
 
 
 def same_attr_n_days_ago(row, attr, n, compare_func):
@@ -240,17 +250,18 @@ def build_subscription_model(data_df):
     y_train, y_test = np.split(Y, [int(0.8 * len(Y.index))])
 
     classification_models = {
-        "SVC": SVC(),
-        "SGD": SGDClassifier(),
-        "Naive Bayes": GaussianNB(),
-        "MLP": MLPClassifier(),
-        "Decision Tree": DecisionTreeClassifier()}
+        # "SVC": SVC(),
+        # "SGD": SGDClassifier(),
+        # "Naive Bayes": GaussianNB(),
+        "MLP": MLPClassifier()
+        # "Decision Tree": DecisionTreeClassifier()
+    }
 
     # Todo choose a specific model and use it
     for name, model in classification_models.items():
         model.fit(x_train, y_train)
-        # print "Precision for subscription using", name, precision_score(y_test, model.predict(x_test))
-    return model
+        print "Precision for subscription using", name, precision_score(y_test, model.predict(x_test))
+        return model
 
 
 def build_income_models(data_df):
@@ -325,11 +336,13 @@ def get_predictions():
 
 def predict(data):
     transaction = ready_transaction_to_model(data)
-    # ToDo if user has no model, choose other random user
+    if transaction[USER_ID][0] not in models['incomes']:
+        transaction = transactions_df.sample(n=1)
     return {
-        "subscription": bool(models['subscription'].predict(transaction[subscription_prediction_features])[0]),
-        "weeklyIncome": float(models['incomes'][transaction[USER_ID][0]]['weekly'].predict(transaction[weekly_income_prediction_features])[0]),
-        "monthlyIncome": float(models['incomes'][transaction[USER_ID][0]]['monthly'].predict(transaction[monthly_income_prediction_features])[0])
+        "subscription": False if transaction[INCOME].iloc[0] else bool(
+            models['subscription'].predict(transaction[subscription_prediction_features])[0]),
+        "weeklyIncome": float(models['incomes'][transaction[USER_ID].iloc[0]]['weekly'].predict(transaction[weekly_income_prediction_features])[0]),
+        "monthlyIncome": float(models['incomes'][transaction[USER_ID].iloc[0]]['monthly'].predict(transaction[monthly_income_prediction_features])[0])
     }
 
 
@@ -341,13 +354,13 @@ def ready_transaction_to_model(data):
 # endregion
 
 if __name__ == '__main__':
-    read_users_and_transactions_files("./users.json", "./transactions_clean.json")
-    all_data = part_a(transactions_df, fill_target_values=True)
-    all_data.to_csv('data.csv', index=False)
+    #     read_users_and_transactions_files("./users.json", "./transactions_clean.json")
+    #     all_data = part_a(transactions_df, fill_target_values=True)
+    #     all_data.to_csv('data.csv', index=False)
 
     # debug
-    all_data = pd.read_csv('data.csv')
+    # all_data = pd.read_csv('data.csv')
     # end debug
 
-    part_b(all_data)
+    # part_b(all_data)
     part_c()
