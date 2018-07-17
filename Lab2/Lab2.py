@@ -47,7 +47,7 @@ LAST_MONTH_SAME_NAME = "last_month_same_name"
 SUBSCRIPTION = "subscription"
 WEEKLY_INCOME = "weekly_income"
 MONTHLY_INCOME = "monthly_income"
-# Subscription Target Value Calculation Features:
+# Subscription Target Value Calculation Features - not to be used in prediction model!:
 SAME_NAME_LAST_WEEK = "same_name_last_week"
 SAME_NAME_LAST_MONTH = "same_name_last_month"
 SAME_CATEGORY_ID_LAST_WEEK = "same_categoryId_last_week"
@@ -66,11 +66,10 @@ all_categories = [u'Bicycles', u'Shops', u'Food and Drink', u'Restaurants', u'Ca
                   u'Financial', u'Computers and Electronics', u'Video Games', u'Warehouses and Wholesale Stores', u'Debit', u'Digital Purchase',
                   u'Supermarkets and Groceries', u'Cable', u'Gas Stations', u'Department Stores', u'Bank Fees', u'Overdraft', u'Interest',
                   u'Interest Charged', u'Wire Transfer', 'subscription_cat', u'Personal Care', u'ATM', u'Withdrawal', u'Pharmacies']
-monthly_income_prediction_features = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_WEEK, NUM_OF_INCOMES_LAST_WEEK,
-                                                                           TOTAL_INCOMES_LAST_MONTH, NUM_OF_INCOMES_LAST_MONTH]
-weekly_income_prediction_features = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_WEEK, NUM_OF_INCOMES_LAST_WEEK,
-                                                                          TOTAL_INCOMES_LAST_MONTH, NUM_OF_INCOMES_LAST_MONTH]
-subscription_prediction_features = all_categories + [LAST_MONTH_CHARGE_SAME_CATEGORY, LAST_MONTH_CHARGE_SAME_PRICE, LAST_MONTH_SAME_NAME] + \
+monthly_income_prediction_features = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_WEEK, NUM_OF_INCOMES_LAST_WEEK]
+weekly_income_prediction_features = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_MONTH, NUM_OF_INCOMES_LAST_MONTH]
+subscription_prediction_features = all_categories + \
+                                   [LAST_MONTH_CHARGE_SAME_CATEGORY, LAST_MONTH_CHARGE_SAME_PRICE, LAST_MONTH_SAME_NAME] + \
                                    [LAST_WEEK_CHARGE_SAME_CATEGORY, LAST_WEEK_CHARGE_SAME_PRICE, LAST_WEEK_SAME_NAME]
 
 
@@ -145,7 +144,7 @@ def part_a(data_df, fill_target_values=False):
                                             last_month_charge_same_category,
                                             last_week_same_name,
                                             last_month_same_name] + categories_data)
-        # Subscription features - to label only:
+        # Subscription features - won't be used to predict:
         if fill_target_values:
             same_amount_last_week = same_attr_n_days_ago(row, AMOUNT, 7, lambda a, b: abs(a - b) <= 20)
             same_amount_last_month = same_attr_n_days_ago(row, AMOUNT, 30, lambda a, b: abs(a - b) <= 20)
@@ -262,10 +261,10 @@ def build_income_models(data_df):
             user_models[user_id] = {}
             user_df = data_df[(data_df[USER_ID] == user_id) & (data_df[INCOME])]
             # Sort from beginning to end of month/week
-            X_month = user_df.sort_values(DAY)[monthly_income_prediction_features]
-            X_week = user_df.sort_values(WEEKDAY)[weekly_income_prediction_features]
-            Y_month = user_df.sort_values(DAY)[MONTHLY_INCOME]
-            Y_week = user_df.sort_values(WEEKDAY)[WEEKLY_INCOME]
+            X_month = user_df[monthly_income_prediction_features]
+            X_week = user_df[weekly_income_prediction_features]
+            Y_month = user_df[MONTHLY_INCOME]
+            Y_week = user_df[WEEKLY_INCOME]
             x_train_month, x_test_month = np.split(X_month, [int(0.8 * len(X_month.index))])
             x_train_week, x_test_week = np.split(X_week, [int(0.8 * len(X_week.index))])
             y_month_train, y_month_test = np.split(Y_month, [int(0.8 * len(Y_month.index))])
@@ -301,6 +300,8 @@ def load_files():
     global models, transactions_df
     transactions_df = pd.read_csv('data.csv')
     transactions_df[DATE] = pd.to_datetime(transactions_df[DATE])
+    # Use only train data, as Moshe requested
+    transactions_df = np.split(transactions_df.sort_values(DATE), [int(0.8 * len(transactions_df.index))])[0]
     models = pickle.load(open('models', 'rb'))
 
 
