@@ -36,6 +36,8 @@ TOTAL_INCOMES_LAST_WEEK = "total_incomes_last_week"
 NUM_OF_INCOMES_LAST_WEEK = "num_of_incomes_last_week"
 TOTAL_INCOMES_LAST_MONTH = "total_incomes_last_month"
 NUM_OF_INCOMES_LAST_MONTH = "num_of_incomes_last_month"
+MEAN_INCOME_LAST_WEEK = "mean_income_last_week"
+MEAN_INCOME_LAST_MONTH = "mean_income_last_month"
 # Subscription Prediction Features:
 LAST_WEEK_CHARGE_SAME_PRICE = "last_week_charge_same_price"
 LAST_MONTH_CHARGE_SAME_PRICE = "last_month_charge_same_price"
@@ -102,8 +104,6 @@ def part_a(data_df, fill_target_values=False):
     for index, row in data_df.iterrows():
         # Discrediting Categories:
         categories_data = [1 if category in row[CATEGORY] else 0 for category in all_categories]
-        last_week_incomes = get_last_n_days(row, 7)
-        last_month_incomes = get_last_n_days(row, 30)
         last_week_charges = get_last_n_days(row, 7, incomes=False)
         last_month_charges = get_last_n_days(row, 30, incomes=False)
         # Subscription features:
@@ -127,16 +127,22 @@ def part_a(data_df, fill_target_values=False):
         # # last_week_same_name_avg_amount = last_week_same_name_df[AMOUNT].mean()
         # # last_month_same_name_avg_amount = last_month_same_name_df[AMOUNT].mean()
         # Income features:
+        last_week_incomes = get_last_n_days(row, 7)
+        last_month_incomes = get_last_n_days(row, 30)
         total_incomes_last_week = round(-last_week_incomes[AMOUNT].sum(), 2) if not last_week_incomes.empty else 0
-        num_of_incomes_last_week = len(last_week_incomes.index)
         total_incomes_last_month = round(-last_month_incomes[AMOUNT].sum(), 2) if not last_month_incomes.empty else 0
+        num_of_incomes_last_week = len(last_week_incomes.index)
         num_of_incomes_last_month = len(last_month_incomes.index)
+        mean_income_last_week = -last_week_incomes[AMOUNT].mean()
+        mean_income_last_month = -last_month_incomes[AMOUNT].mean()
         # This data will be used in the model:
         additional_features_data.append([  # Income:
                                             total_incomes_last_week,
-                                            num_of_incomes_last_week,
                                             total_incomes_last_month,
+                                            num_of_incomes_last_week,
                                             num_of_incomes_last_month,
+                                            mean_income_last_week,
+                                            mean_income_last_month,
                                             # Subscription:
                                             last_week_charge_same_price,
                                             last_week_charge_same_category,
@@ -158,9 +164,11 @@ def part_a(data_df, fill_target_values=False):
 
     additional_features_df = pd.DataFrame(additional_features_data, columns=[  # Income:
                                                                                 TOTAL_INCOMES_LAST_WEEK,
-                                                                                NUM_OF_INCOMES_LAST_WEEK,
                                                                                 TOTAL_INCOMES_LAST_MONTH,
+                                                                                NUM_OF_INCOMES_LAST_WEEK,
                                                                                 NUM_OF_INCOMES_LAST_MONTH,
+                                                                                MEAN_INCOME_LAST_WEEK,
+                                                                                MEAN_INCOME_LAST_MONTH,
                                                                                 # Subscription:
                                                                                 LAST_WEEK_CHARGE_SAME_PRICE,
                                                                                 LAST_WEEK_CHARGE_SAME_CATEGORY,
@@ -241,7 +249,7 @@ def build_subscription_model(data_df):
     # Todo choose a specific model and use it
     for name, model in classification_models.items():
         model.fit(x_train, y_train)
-        print "Precision for subscription using", name, precision_score(y_test, model.predict(x_test))
+        # print "Precision for subscription using", name, precision_score(y_test, model.predict(x_test))
     return model
 
 
@@ -274,14 +282,14 @@ def build_income_models(data_df):
             month_model = clone(model)
             month_model.fit(x_train_month, y_month_train)
             average_month_mse += mean_squared_error(y_month_test, month_model.predict(x_test_month)) ** 0.5
-            # print "User ID:", user_id, "monthly using", name, "Mean Error:", mean_squared_error(y_month_test,
-            #                                                                                     month_model.predict(x_test_month)) ** 0.5
+            print "User ID:", user_id, "monthly using", name, "Mean Error:", mean_squared_error(y_month_test,
+                                                                                                month_model.predict(x_test_month)) ** 0.5
             user_models[user_id]['monthly'] = month_model
             # Week
             week_model = clone(model)
             week_model.fit(x_train_week, y_week_train)
             average_week_mse += mean_squared_error(y_week_test, week_model.predict(x_test_week)) ** 0.5
-            # print "User ID:", user_id, "weekly using", name, "Mean Error:", mean_squared_error(y_week_test, week_model.predict(x_test_week)) ** 0.5
+            print "User ID:", user_id, "weekly using", name, "Mean Error:", mean_squared_error(y_week_test, week_model.predict(x_test_week)) ** 0.5
             user_models[user_id]['weekly'] = week_model
         # print "Monthly avg MSE using", name, ":", average_month_mse / len(data_df[USER_ID].unique())
         # print "Weekly avg MSE using", name, ":", average_week_mse / len(data_df[USER_ID].unique())
