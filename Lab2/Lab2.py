@@ -63,6 +63,7 @@ def read_users_and_transactions_files(users_file_path, transactions_file_path):
 
 # region Part A
 def part_a(data_df, fill_target_values=False):
+    data_df[DATE] = pd.to_datetime(data_df[DATE])
     data_df[WEEKDAY] = pd.to_datetime(data_df[DATE]).apply(lambda x: x.weekday())
     data_df[WORK_WEEK] = pd.to_datetime(data_df[DATE]).apply(lambda x: x.isocalendar()[1])
     data_df[MONTH] = pd.to_datetime(data_df[DATE]).apply(lambda x: x.month)
@@ -290,12 +291,12 @@ if __name__ == '__main__':
                       u'Financial', u'Computers and Electronics', u'Video Games', u'Warehouses and Wholesale Stores', u'Debit', u'Digital Purchase',
                       u'Supermarkets and Groceries', u'Cable', u'Gas Stations', u'Department Stores', u'Bank Fees', u'Overdraft', u'Interest',
                       u'Interest Charged', u'Wire Transfer', 'subscription_cat', u'Personal Care', u'ATM', u'Withdrawal', u'Pharmacies']
-    all_data = part_a(transactions_df, fill_target_values=True)
-    all_data.to_csv('data.csv', index=False)
+    # all_data = part_a(transactions_df, fill_target_values=True)
+    # all_data.to_csv('data.csv', index=False)
 
     # debug
     all_data = pd.read_csv('data.csv')
     # end debug
 
-    part_b(all_data)
+    # part_b(all_data)
     part_c()
