@@ -276,26 +276,7 @@ def predict(data):
 
 def ready_transaction_to_model(data):
     trans_df = pd.DataFrame.from_dict(data).transpose().reset_index().drop('index', axis=1)
-
-    # Turn categories array to discrete (add all categories and fill with 0/1)
-    for category in all_categories:
-        trans_df[category] = 1 if category in trans_df[CATEGORY][0] else 0
-    # Add columns : Weekday, Work Week & Month
-    trans_df[DATE] = pd.to_datetime(trans_df[DATE])
-    trans_df[WEEKDAY] = pd.to_datetime(trans_df[DATE]).apply(lambda x: x.weekday())
-    trans_df[WORK_WEEK] = pd.to_datetime(trans_df[DATE]).apply(lambda x: x.isocalendar()[1])
-    trans_df[MONTH] = pd.to_datetime(trans_df[DATE]).apply(lambda x: x.month)
-    trans_df[DAY] = pd.to_datetime(trans_df[DATE]).apply(lambda x: x.day)
-    # Add Income column
-    trans_df[INCOME] = trans_df[AMOUNT] < 0
-    # Calculate total & num of incomes for week & month
-    last_week_incomes = get_last_n_days_incomes(trans_df.iloc[0], 7)
-    last_month_incomes = get_last_n_days_incomes(trans_df.iloc[0], 30)
-    trans_df[TOTAL_INCOMES_LAST_WEEK] = round(-last_week_incomes[AMOUNT].sum(), 2) if not last_week_incomes.empty else 0
-    trans_df[NUM_OF_INCOMES_LAST_WEEK] = len(last_week_incomes.index)
-    trans_df[TOTAL_INCOMES_LAST_MONTH] = round(-last_month_incomes[AMOUNT].sum(), 2) if not last_month_incomes.empty else 0
-    trans_df[NUM_OF_INCOMES_LAST_MONTH] = len(last_month_incomes.index)
-    return trans_df
+    return part_a(trans_df, fill_target_values=False)
 
 
 # endregion
