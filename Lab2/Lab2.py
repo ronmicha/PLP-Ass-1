@@ -30,20 +30,22 @@ INCOME = "income"
 AMOUNT = "amount"
 NAME = "name"
 CATEGORY_ID = "categoryId"
-# Target Features:
-SUBSCRIPTION = "subscription"
-WEEKLY_INCOME = "weekly_income"
-MONTHLY_INCOME = "monthly_income"
 # Income Prediction Features:
 TOTAL_INCOMES_LAST_WEEK = "total_incomes_last_week"
 NUM_OF_INCOMES_LAST_WEEK = "num_of_incomes_last_week"
 TOTAL_INCOMES_LAST_MONTH = "total_incomes_last_month"
 NUM_OF_INCOMES_LAST_MONTH = "num_of_incomes_last_month"
+LAST_WEEK_SAME_NAME = "last_week_same_name "
+LAST_MONTH_SAME_NAME = "last_month_same_name"
 # Subscription Prediction Features:
 LAST_WEEK_CHARGE_SAME_PRICE = "last_week_charge_same_price"
 LAST_MONTH_CHARGE_SAME_PRICE = "last_month_charge_same_price"
 LAST_WEEK_CHARGE_SAME_CATEGORY = "last_week_charge_same_category"
 LAST_MONTH_CHARGE_SAME_CATEGORY = "last_month_charge_same_category"
+# Target Features:
+SUBSCRIPTION = "subscription"
+WEEKLY_INCOME = "weekly_income"
+MONTHLY_INCOME = "monthly_income"
 # Subscription Target Value Calculation Features:
 SAME_NAME_LAST_WEEK = "same_name_last_week"
 SAME_NAME_LAST_MONTH = "same_name_last_month"
@@ -67,8 +69,8 @@ monthly_income_prediction_features = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL
                                                                            TOTAL_INCOMES_LAST_MONTH, NUM_OF_INCOMES_LAST_MONTH]
 weekly_income_prediction_features = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_WEEK, NUM_OF_INCOMES_LAST_WEEK,
                                                                           TOTAL_INCOMES_LAST_MONTH, NUM_OF_INCOMES_LAST_MONTH]
-subscription_prediction_features = all_categories + [LAST_MONTH_CHARGE_SAME_CATEGORY, LAST_MONTH_CHARGE_SAME_PRICE, LAST_WEEK_CHARGE_SAME_CATEGORY,
-                                                     LAST_WEEK_CHARGE_SAME_PRICE]
+subscription_prediction_features = all_categories + [LAST_MONTH_CHARGE_SAME_CATEGORY, LAST_MONTH_CHARGE_SAME_PRICE, LAST_MONTH_SAME_NAME] + \
+                                   [LAST_WEEK_CHARGE_SAME_CATEGORY, LAST_WEEK_CHARGE_SAME_PRICE, LAST_WEEK_SAME_NAME]
 
 
 # endregion
@@ -109,6 +111,8 @@ def part_a(data_df, fill_target_values=False):
         last_month_charge_same_price = not last_month_charges[abs(last_month_charges[AMOUNT] - row[AMOUNT]) < 20].empty
         last_week_charge_same_category = not last_week_charges[CATEGORY].apply(lambda x: x == row[CATEGORY]).empty
         last_month_charge_same_category = not last_month_charges[CATEGORY].apply(lambda x: x == row[CATEGORY]).empty
+        last_week_same_name = not last_week_charges[NAME].apply(lambda x: SequenceMatcher(None, x, row[NAME]).ratio() >= 0.7).empty
+        last_month_same_name = not last_month_charges[NAME].apply(lambda x: SequenceMatcher(None, x, row[NAME]).ratio() >= 0.7).empty
         # Income features:
         total_incomes_last_week = round(-last_week_incomes[AMOUNT].sum(), 2) if not last_week_incomes.empty else 0
         num_of_incomes_last_week = len(last_week_incomes.index)
@@ -122,11 +126,11 @@ def part_a(data_df, fill_target_values=False):
                                          last_week_charge_same_price,
                                          last_week_charge_same_category,
                                          last_month_charge_same_price,
-                                         last_month_charge_same_category] + categories)
+                                         last_month_charge_same_category,
+                                         last_week_same_name,
+                                         last_month_same_name] + categories)
         # Subscription features - to label only:
         if fill_target_values:
-            # same_name_last_week = same_attr_past_n_days(row, NAME, 7, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
-            # same_name_last_month = same_attr_past_n_days(row, NAME, 30, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
             same_amount_last_week = same_attr_n_days_ago(row, AMOUNT, 7, lambda a, b: abs(a - b) <= 20)
             same_amount_last_month = same_attr_n_days_ago(row, AMOUNT, 30, lambda a, b: abs(a - b) <= 20)
             same_categoryid_last_week = same_attr_n_days_ago(row, CATEGORY_ID, 7, lambda a, b: a == b)
@@ -144,7 +148,9 @@ def part_a(data_df, fill_target_values=False):
                                                                              LAST_WEEK_CHARGE_SAME_PRICE,
                                                                              LAST_WEEK_CHARGE_SAME_CATEGORY,
                                                                              LAST_MONTH_CHARGE_SAME_PRICE,
-                                                                             LAST_MONTH_CHARGE_SAME_CATEGORY] + all_categories)
+                                                                             LAST_MONTH_CHARGE_SAME_CATEGORY,
+                                                                             LAST_WEEK_SAME_NAME,
+                                                                             LAST_MONTH_SAME_NAME] + all_categories)
     all_data_df = pd.concat([data_df, additional_features_df], axis=1)
 
     if fill_target_values:
@@ -251,14 +257,14 @@ def build_income_models(data_df):
             month_model = clone(model)
             month_model.fit(x_train_month, y_month_train)
             average_month_mse += mean_squared_error(y_month_test, month_model.predict(x_test_month)) ** 0.5
-            print "User ID:", user_id, "monthly using", name, "Mean Error:", mean_squared_error(y_month_test,
-                                                                                                month_model.predict(x_test_month)) ** 0.5
+            # print "User ID:", user_id, "monthly using", name, "Mean Error:", mean_squared_error(y_month_test,
+            #                                                                                     month_model.predict(x_test_month)) ** 0.5
             user_models[user_id]['monthly'] = month_model
             # Week
             week_model = clone(model)
             week_model.fit(x_train_week, y_week_train)
             average_week_mse += mean_squared_error(y_week_test, week_model.predict(x_test_week)) ** 0.5
-            print "User ID:", user_id, "weekly using", name, "Mean Error:", mean_squared_error(y_week_test, week_model.predict(x_test_week)) ** 0.5
+            # print "User ID:", user_id, "weekly using", name, "Mean Error:", mean_squared_error(y_week_test, week_model.predict(x_test_week)) ** 0.5
             user_models[user_id]['weekly'] = week_model
         # print "Monthly avg MSE using", name, ":", average_month_mse / len(data_df[USER_ID].unique())
         # print "Weekly avg MSE using", name, ":", average_week_mse / len(data_df[USER_ID].unique())
