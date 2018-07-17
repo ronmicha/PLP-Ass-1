@@ -18,6 +18,7 @@ from flask import Flask, request, jsonify
 flask_app = Flask(__name__)
 
 # region Column Names Enum
+# Given Features:
 CATEGORY = "category"
 USER_ID = "userId"
 WEEKDAY = "weekday"
@@ -29,14 +30,21 @@ INCOME = "income"
 AMOUNT = "amount"
 NAME = "name"
 CATEGORY_ID = "categoryId"
+# Target Features:
 SUBSCRIPTION = "subscription"
 WEEKLY_INCOME = "weekly_income"
 MONTHLY_INCOME = "monthly_income"
+# Income Prediction Features:
 TOTAL_INCOMES_LAST_WEEK = "total_incomes_last_week"
 NUM_OF_INCOMES_LAST_WEEK = "num_of_incomes_last_week"
 TOTAL_INCOMES_LAST_MONTH = "total_incomes_last_month"
 NUM_OF_INCOMES_LAST_MONTH = "num_of_incomes_last_month"
-
+# Subscription Prediction Features:
+LAST_WEEK_CHARGE_SAME_PRICE = "last_week_charge_same_price"
+LAST_MONTH_CHARGE_SAME_PRICE = "last_month_charge_same_price"
+LAST_WEEK_CHARGE_SAME_CATEGORY = "last_week_charge_same_category"
+LAST_MONTH_CHARGE_SAME_CATEGORY = "last_month_charge_same_category"
+# Subscription Target Value Calculation Features:
 SAME_NAME_LAST_WEEK = "same_name_last_week"
 SAME_NAME_LAST_MONTH = "same_name_last_month"
 SAME_CATEGORY_ID_LAST_WEEK = "same_categoryId_last_week"
@@ -45,16 +53,25 @@ SAME_AMOUNT_LAST_WEEK = "same_amount_last_week"
 SAME_AMOUNT_LAST_MONTH = "same_amount_last_month"
 # endregion
 
+# region Globals
 users_df = None
 transactions_df = None
-all_categories = None
 models = None
+all_categories = [u'Bicycles', u'Shops', u'Food and Drink', u'Restaurants', u'Car Service', u'Ride Share', u'Travel',
+                  u'Airlines and Aviation Services', u'Coffee Shop', u'Gyms and Fitness Centers', u'Recreation', u'Deposit', u'Transfer',
+                  u'Credit Card', u'Payment', u'Credit', u'Discount Stores', u'Service', u'Telecommunication Services', u'Music, Video and DVD',
+                  u'Financial', u'Computers and Electronics', u'Video Games', u'Warehouses and Wholesale Stores', u'Debit', u'Digital Purchase',
+                  u'Supermarkets and Groceries', u'Cable', u'Gas Stations', u'Department Stores', u'Bank Fees', u'Overdraft', u'Interest',
+                  u'Interest Charged', u'Wire Transfer', 'subscription_cat', u'Personal Care', u'ATM', u'Withdrawal', u'Pharmacies']
 monthly_income_prediction_features = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_WEEK, NUM_OF_INCOMES_LAST_WEEK,
                                                                            TOTAL_INCOMES_LAST_MONTH, NUM_OF_INCOMES_LAST_MONTH]
 weekly_income_prediction_features = [WORK_WEEK, MONTH, AMOUNT, INCOME] + [TOTAL_INCOMES_LAST_WEEK, NUM_OF_INCOMES_LAST_WEEK,
                                                                           TOTAL_INCOMES_LAST_MONTH, NUM_OF_INCOMES_LAST_MONTH]
-subscription_prediction_features = all_categories
+subscription_prediction_features = all_categories + [LAST_MONTH_CHARGE_SAME_CATEGORY, LAST_MONTH_CHARGE_SAME_PRICE, LAST_WEEK_CHARGE_SAME_CATEGORY,
+                                                     LAST_WEEK_CHARGE_SAME_PRICE]
 
+
+# endregion
 
 # Original "users.json" had invalid structure, I modified it to be valid
 def read_users_and_transactions_files(users_file_path, transactions_file_path):
@@ -81,15 +98,31 @@ def part_a(data_df, fill_target_values=False):
     features_for_subscription_label = []
 
     for index, row in data_df.iterrows():
-        # Categories
+        # Discrediting Categories:
         categories = [1 if category in row[CATEGORY] else 0 for category in all_categories]
+        last_week_incomes = get_last_n_days(row, 7)
+        last_month_incomes = get_last_n_days(row, 30)
+        last_week_charges = get_last_n_days(row, 7, incomes=False)
+        last_month_charges = get_last_n_days(row, 30, incomes=False)
+        # Subscription features:
+        last_week_charge_same_price = not last_week_charges[abs(last_week_charges[AMOUNT] - row[AMOUNT]) < 20].empty
+        last_month_charge_same_price = not last_month_charges[abs(last_month_charges[AMOUNT] - row[AMOUNT]) < 20].empty
+        last_week_charge_same_category = not last_week_charges[CATEGORY].apply(lambda x: x == row[CATEGORY]).empty
+        last_month_charge_same_category = not last_month_charges[CATEGORY].apply(lambda x: x == row[CATEGORY]).empty
         # Income features:
-        last_week_incomes = get_last_n_days_incomes(row, 7)
-        last_month_incomes = get_last_n_days_incomes(row, 30)
         total_incomes_last_week = round(-last_week_incomes[AMOUNT].sum(), 2) if not last_week_incomes.empty else 0
         num_of_incomes_last_week = len(last_week_incomes.index)
         total_incomes_last_month = round(-last_month_incomes[AMOUNT].sum(), 2) if not last_month_incomes.empty else 0
         num_of_incomes_last_month = len(last_month_incomes.index)
+        # This data will be used in the model:
+        additional_features_data.append([total_incomes_last_week,
+                                         num_of_incomes_last_week,
+                                         total_incomes_last_month,
+                                         num_of_incomes_last_month,
+                                         last_week_charge_same_price,
+                                         last_week_charge_same_category,
+                                         last_month_charge_same_price,
+                                         last_month_charge_same_category] + categories)
         # Subscription features - to label only:
         if fill_target_values:
             # same_name_last_week = same_attr_past_n_days(row, NAME, 7, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
@@ -103,16 +136,15 @@ def part_a(data_df, fill_target_values=False):
                                                     same_amount_last_month,
                                                     same_categoryid_last_week,
                                                     same_categoryid_last_month])
-        # This data will be used in the model:
-        additional_features_data.append([total_incomes_last_week,
-                                         num_of_incomes_last_week,
-                                         total_incomes_last_month,
-                                         num_of_incomes_last_month] + categories)
 
     additional_features_df = pd.DataFrame(additional_features_data, columns=[TOTAL_INCOMES_LAST_WEEK,
                                                                              NUM_OF_INCOMES_LAST_WEEK,
                                                                              TOTAL_INCOMES_LAST_MONTH,
-                                                                             NUM_OF_INCOMES_LAST_MONTH] + all_categories)
+                                                                             NUM_OF_INCOMES_LAST_MONTH,
+                                                                             LAST_WEEK_CHARGE_SAME_PRICE,
+                                                                             LAST_WEEK_CHARGE_SAME_CATEGORY,
+                                                                             LAST_MONTH_CHARGE_SAME_PRICE,
+                                                                             LAST_MONTH_CHARGE_SAME_CATEGORY] + all_categories)
     all_data_df = pd.concat([data_df, additional_features_df], axis=1)
 
     if fill_target_values:
@@ -137,15 +169,15 @@ def part_a(data_df, fill_target_values=False):
     return all_data_df
 
 
-def get_last_n_days_incomes(row, n):
+def get_last_n_days(row, n, incomes=True):
     if n == 7:
         start_date = row[DATE] - pd.DateOffset(days=int(row[WEEKDAY]))
-        end_date = row[DATE]
+        end_date = row[DATE] - pd.DateOffset(days=1)
     else:  # n == 30
         start_date = row[DATE] - MonthBegin()  # pd.DateOffset(months=1, days=int(row[WEEKDAY]))
-        end_date = row[DATE]
+        end_date = row[DATE] - pd.DateOffset(days=1)
     last_n_days_incomes = transactions_df[(transactions_df[USER_ID] == row[USER_ID]) &
-                                          (transactions_df[INCOME]) &
+                                          (transactions_df[INCOME] == incomes) &
                                           (transactions_df[DATE] >= start_date) &
                                           (transactions_df[DATE] <= end_date)]
     return last_n_days_incomes
@@ -242,15 +274,9 @@ def part_c():
 
 @flask_app.before_first_request
 def load_files():
-    global all_categories, models, transactions_df
+    global models, transactions_df
     transactions_df = pd.read_csv('data.csv')
     transactions_df[DATE] = pd.to_datetime(transactions_df[DATE])
-    all_categories = [u'Bicycles', u'Shops', u'Food and Drink', u'Restaurants', u'Car Service', u'Ride Share', u'Travel',
-                      u'Airlines and Aviation Services', u'Coffee Shop', u'Gyms and Fitness Centers', u'Recreation', u'Deposit', u'Transfer',
-                      u'Credit Card', u'Payment', u'Credit', u'Discount Stores', u'Service', u'Telecommunication Services', u'Music, Video and DVD',
-                      u'Financial', u'Computers and Electronics', u'Video Games', u'Warehouses and Wholesale Stores', u'Debit', u'Digital Purchase',
-                      u'Supermarkets and Groceries', u'Cable', u'Gas Stations', u'Department Stores', u'Bank Fees', u'Overdraft', u'Interest',
-                      u'Interest Charged', u'Wire Transfer', 'subscription_cat', u'Personal Care', u'ATM', u'Withdrawal', u'Pharmacies']
     models = pickle.load(open('models', 'rb'))
 
 
@@ -266,7 +292,6 @@ def get_predictions():
 
 def predict(data):
     transaction = ready_transaction_to_model(data)
-    # ToDo use relevant columns for each model:
     return {
         "subscription": bool(models['subscription'].predict(transaction[subscription_prediction_features])[0]),
         "weeklyIncome": float(models['incomes'][transaction[USER_ID][0]]['weekly'].predict(transaction[weekly_income_prediction_features])[0]),
@@ -283,19 +308,12 @@ def ready_transaction_to_model(data):
 
 if __name__ == '__main__':
     read_users_and_transactions_files("./users.json", "./transactions_clean.json")
-    global all_categories
-    all_categories = [u'Bicycles', u'Shops', u'Food and Drink', u'Restaurants', u'Car Service', u'Ride Share', u'Travel',
-                      u'Airlines and Aviation Services', u'Coffee Shop', u'Gyms and Fitness Centers', u'Recreation', u'Deposit', u'Transfer',
-                      u'Credit Card', u'Payment', u'Credit', u'Discount Stores', u'Service', u'Telecommunication Services', u'Music, Video and DVD',
-                      u'Financial', u'Computers and Electronics', u'Video Games', u'Warehouses and Wholesale Stores', u'Debit', u'Digital Purchase',
-                      u'Supermarkets and Groceries', u'Cable', u'Gas Stations', u'Department Stores', u'Bank Fees', u'Overdraft', u'Interest',
-                      u'Interest Charged', u'Wire Transfer', 'subscription_cat', u'Personal Care', u'ATM', u'Withdrawal', u'Pharmacies']
-    # all_data = part_a(transactions_df, fill_target_values=True)
-    # all_data.to_csv('data.csv', index=False)
+    all_data = part_a(transactions_df, fill_target_values=True)
+    all_data.to_csv('data.csv', index=False)
 
     # debug
     all_data = pd.read_csv('data.csv')
     # end debug
 
-    # part_b(all_data)
+    part_b(all_data)
     part_c()
