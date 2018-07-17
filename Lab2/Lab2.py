@@ -1,3 +1,4 @@
+# *********** Use Python 2 ***********
 import json
 import pickle
 import numpy as np
@@ -35,13 +36,13 @@ TOTAL_INCOMES_LAST_WEEK = "total_incomes_last_week"
 NUM_OF_INCOMES_LAST_WEEK = "num_of_incomes_last_week"
 TOTAL_INCOMES_LAST_MONTH = "total_incomes_last_month"
 NUM_OF_INCOMES_LAST_MONTH = "num_of_incomes_last_month"
-LAST_WEEK_SAME_NAME = "last_week_same_name "
-LAST_MONTH_SAME_NAME = "last_month_same_name"
 # Subscription Prediction Features:
 LAST_WEEK_CHARGE_SAME_PRICE = "last_week_charge_same_price"
 LAST_MONTH_CHARGE_SAME_PRICE = "last_month_charge_same_price"
 LAST_WEEK_CHARGE_SAME_CATEGORY = "last_week_charge_same_category"
 LAST_MONTH_CHARGE_SAME_CATEGORY = "last_month_charge_same_category"
+LAST_WEEK_SAME_NAME = "last_week_same_name "
+LAST_MONTH_SAME_NAME = "last_month_same_name"
 # Target Features:
 SUBSCRIPTION = "subscription"
 WEEKLY_INCOME = "weekly_income"
@@ -101,34 +102,49 @@ def part_a(data_df, fill_target_values=False):
 
     for index, row in data_df.iterrows():
         # Discrediting Categories:
-        categories = [1 if category in row[CATEGORY] else 0 for category in all_categories]
+        categories_data = [1 if category in row[CATEGORY] else 0 for category in all_categories]
         last_week_incomes = get_last_n_days(row, 7)
         last_month_incomes = get_last_n_days(row, 30)
         last_week_charges = get_last_n_days(row, 7, incomes=False)
         last_month_charges = get_last_n_days(row, 30, incomes=False)
         # Subscription features:
-        last_week_charge_same_price = not last_week_charges[abs(last_week_charges[AMOUNT] - row[AMOUNT]) < 20].empty
-        last_month_charge_same_price = not last_month_charges[abs(last_month_charges[AMOUNT] - row[AMOUNT]) < 20].empty
-        last_week_charge_same_category = not last_week_charges[CATEGORY].apply(lambda x: x == row[CATEGORY]).empty
-        last_month_charge_same_category = not last_month_charges[CATEGORY].apply(lambda x: x == row[CATEGORY]).empty
-        last_week_same_name = not last_week_charges[NAME].apply(lambda x: SequenceMatcher(None, x, row[NAME]).ratio() >= 0.7).empty
-        last_month_same_name = not last_month_charges[NAME].apply(lambda x: SequenceMatcher(None, x, row[NAME]).ratio() >= 0.7).empty
+        last_week_charge_same_price_df = last_week_charges[abs(last_week_charges[AMOUNT] - row[AMOUNT]) < 20]
+        last_month_charge_same_price_df = last_month_charges[abs(last_month_charges[AMOUNT] - row[AMOUNT]) < 20]
+        last_week_charge_same_category_df = last_week_charges[CATEGORY].apply(lambda x: x == row[CATEGORY])
+        last_month_charge_same_category_df = last_month_charges[CATEGORY].apply(lambda x: x == row[CATEGORY])
+        last_week_same_name_df = last_week_charges[NAME].apply(lambda x: SequenceMatcher(None, x, row[NAME]).ratio() >= 0.7)
+        last_month_same_name_df = last_month_charges[NAME].apply(lambda x: SequenceMatcher(None, x, row[NAME]).ratio() >= 0.7)
+        last_week_charge_same_price = not last_week_charge_same_price_df.empty
+        last_month_charge_same_price = not last_month_charge_same_price_df.empty
+        last_week_charge_same_category = not last_week_charge_same_category_df.empty
+        last_month_charge_same_category = not last_month_charge_same_category_df.empty
+        last_week_same_name = not last_week_same_name_df.empty
+        last_month_same_name = not last_month_same_name_df.empty
+        # ToDo delete this?
+        # last_week_charge_same_price_avg_amount = last_week_charge_same_price_df[AMOUNT].mean() if last_week_charge_same_price else 0
+        # last_month_charge_same_price_avg_amount = last_month_charge_same_price_df[AMOUNT].mean() if last_month_charge_same_price else 0
+        # # last_week_charge_same_category_avg_amount = last_week_charge_same_category_df[AMOUNT].mean()
+        # # last_month_charge_same_category_avg_amount = last_month_charge_same_category_df[AMOUNT].mean()
+        # # last_week_same_name_avg_amount = last_week_same_name_df[AMOUNT].mean()
+        # # last_month_same_name_avg_amount = last_month_same_name_df[AMOUNT].mean()
         # Income features:
         total_incomes_last_week = round(-last_week_incomes[AMOUNT].sum(), 2) if not last_week_incomes.empty else 0
         num_of_incomes_last_week = len(last_week_incomes.index)
         total_incomes_last_month = round(-last_month_incomes[AMOUNT].sum(), 2) if not last_month_incomes.empty else 0
         num_of_incomes_last_month = len(last_month_incomes.index)
         # This data will be used in the model:
-        additional_features_data.append([total_incomes_last_week,
-                                         num_of_incomes_last_week,
-                                         total_incomes_last_month,
-                                         num_of_incomes_last_month,
-                                         last_week_charge_same_price,
-                                         last_week_charge_same_category,
-                                         last_month_charge_same_price,
-                                         last_month_charge_same_category,
-                                         last_week_same_name,
-                                         last_month_same_name] + categories)
+        additional_features_data.append([  # Income:
+                                            total_incomes_last_week,
+                                            num_of_incomes_last_week,
+                                            total_incomes_last_month,
+                                            num_of_incomes_last_month,
+                                            # Subscription:
+                                            last_week_charge_same_price,
+                                            last_week_charge_same_category,
+                                            last_month_charge_same_price,
+                                            last_month_charge_same_category,
+                                            last_week_same_name,
+                                            last_month_same_name] + categories_data)
         # Subscription features - to label only:
         if fill_target_values:
             same_amount_last_week = same_attr_n_days_ago(row, AMOUNT, 7, lambda a, b: abs(a - b) <= 20)
@@ -141,16 +157,18 @@ def part_a(data_df, fill_target_values=False):
                                                     same_categoryid_last_week,
                                                     same_categoryid_last_month])
 
-    additional_features_df = pd.DataFrame(additional_features_data, columns=[TOTAL_INCOMES_LAST_WEEK,
-                                                                             NUM_OF_INCOMES_LAST_WEEK,
-                                                                             TOTAL_INCOMES_LAST_MONTH,
-                                                                             NUM_OF_INCOMES_LAST_MONTH,
-                                                                             LAST_WEEK_CHARGE_SAME_PRICE,
-                                                                             LAST_WEEK_CHARGE_SAME_CATEGORY,
-                                                                             LAST_MONTH_CHARGE_SAME_PRICE,
-                                                                             LAST_MONTH_CHARGE_SAME_CATEGORY,
-                                                                             LAST_WEEK_SAME_NAME,
-                                                                             LAST_MONTH_SAME_NAME] + all_categories)
+    additional_features_df = pd.DataFrame(additional_features_data, columns=[  # Income:
+                                                                                TOTAL_INCOMES_LAST_WEEK,
+                                                                                NUM_OF_INCOMES_LAST_WEEK,
+                                                                                TOTAL_INCOMES_LAST_MONTH,
+                                                                                NUM_OF_INCOMES_LAST_MONTH,
+                                                                                # Subscription:
+                                                                                LAST_WEEK_CHARGE_SAME_PRICE,
+                                                                                LAST_WEEK_CHARGE_SAME_CATEGORY,
+                                                                                LAST_MONTH_CHARGE_SAME_PRICE,
+                                                                                LAST_MONTH_CHARGE_SAME_CATEGORY,
+                                                                                LAST_WEEK_SAME_NAME,
+                                                                                LAST_MONTH_SAME_NAME] + all_categories)
     all_data_df = pd.concat([data_df, additional_features_df], axis=1)
 
     if fill_target_values:
@@ -298,6 +316,7 @@ def get_predictions():
 
 def predict(data):
     transaction = ready_transaction_to_model(data)
+    # ToDo if user has no model, choose other random user
     return {
         "subscription": bool(models['subscription'].predict(transaction[subscription_prediction_features])[0]),
         "weeklyIncome": float(models['incomes'][transaction[USER_ID][0]]['weekly'].predict(transaction[weekly_income_prediction_features])[0]),
