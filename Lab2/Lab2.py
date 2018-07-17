@@ -62,23 +62,21 @@ def read_users_and_transactions_files(users_file_path, transactions_file_path):
 
 
 # region Part A
-def part_a():
-    global all_categories
-    global transactions_df
-
-    transactions_df[WEEKDAY] = pd.to_datetime(transactions_df[DATE]).apply(lambda x: x.weekday())
-    transactions_df[WORK_WEEK] = pd.to_datetime(transactions_df[DATE]).apply(lambda x: x.isocalendar()[1])
-    transactions_df[MONTH] = pd.to_datetime(transactions_df[DATE]).apply(lambda x: x.month)
-    transactions_df[DAY] = pd.to_datetime(transactions_df[DATE]).apply(lambda x: x.day)
-    categories_df = transactions_df[CATEGORY].apply(
-        lambda x: pd.Series({k if k.lower() != 'subscription' else 'subscription_cat': 1 for v, k in enumerate(x)})).fillna(0)
-    all_categories = list(categories_df.columns)
-    transactions_df = pd.concat([transactions_df, categories_df], axis=1)
-    transactions_df[INCOME] = transactions_df[AMOUNT] < 0
+def part_a(data_df, fill_target_values=False):
+    data_df[WEEKDAY] = pd.to_datetime(data_df[DATE]).apply(lambda x: x.weekday())
+    data_df[WORK_WEEK] = pd.to_datetime(data_df[DATE]).apply(lambda x: x.isocalendar()[1])
+    data_df[MONTH] = pd.to_datetime(data_df[DATE]).apply(lambda x: x.month)
+    data_df[DAY] = pd.to_datetime(data_df[DATE]).apply(lambda x: x.day)
+    # categories_df = data_df[CATEGORY].apply(
+    #     lambda x: pd.Series({k if k.lower() != 'subscription' else 'subscription_cat': 1 for v, k in enumerate(x)})).fillna(0)
+    # data_df = pd.concat([data_df, categories_df], axis=1)
+    data_df[INCOME] = data_df[AMOUNT] < 0
     additional_features_data = []
     features_for_subscription_label = []
 
-    for index, row in transactions_df.iterrows():
+    for index, row in data_df.iterrows():
+        # Categories
+        categories = [1 if category in row[CATEGORY] else 0 for category in all_categories]
         # Income features:
         last_week_incomes = get_last_n_days_incomes(row, 7)
         last_month_incomes = get_last_n_days_incomes(row, 30)
@@ -87,45 +85,48 @@ def part_a():
         total_incomes_last_month = round(-last_month_incomes[AMOUNT].sum(), 2) if not last_month_incomes.empty else 0
         num_of_incomes_last_month = len(last_month_incomes.index)
         # Subscription features - to label only:
-        # same_name_last_week = same_attr_past_n_days(row, NAME, 7, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
-        # same_name_last_month = same_attr_past_n_days(row, NAME, 30, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
-        same_amount_last_week = same_attr_n_days_ago(row, AMOUNT, 7, lambda a, b: abs(a - b) <= 20)
-        same_amount_last_month = same_attr_n_days_ago(row, AMOUNT, 30, lambda a, b: abs(a - b) <= 20)
-        same_categoryid_last_week = same_attr_n_days_ago(row, CATEGORY_ID, 7, lambda a, b: a == b)
-        same_categoryid_last_month = same_attr_n_days_ago(row, CATEGORY_ID, 30, lambda a, b: a == b)
+        if fill_target_values:
+            # same_name_last_week = same_attr_past_n_days(row, NAME, 7, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
+            # same_name_last_month = same_attr_past_n_days(row, NAME, 30, lambda a, b: SequenceMatcher(None, a, b).ratio() >= 0.7)
+            same_amount_last_week = same_attr_n_days_ago(row, AMOUNT, 7, lambda a, b: abs(a - b) <= 20)
+            same_amount_last_month = same_attr_n_days_ago(row, AMOUNT, 30, lambda a, b: abs(a - b) <= 20)
+            same_categoryid_last_week = same_attr_n_days_ago(row, CATEGORY_ID, 7, lambda a, b: a == b)
+            same_categoryid_last_month = same_attr_n_days_ago(row, CATEGORY_ID, 30, lambda a, b: a == b)
+            # This data won't be used in the model, only to label the Subscription column:
+            features_for_subscription_label.append([same_amount_last_week,
+                                                    same_amount_last_month,
+                                                    same_categoryid_last_week,
+                                                    same_categoryid_last_month])
         # This data will be used in the model:
         additional_features_data.append([total_incomes_last_week,
                                          num_of_incomes_last_week,
                                          total_incomes_last_month,
-                                         num_of_incomes_last_month])
-        # This data won't be used in the model, only to label the Subscription column:
-        features_for_subscription_label.append([same_amount_last_week,
-                                                same_amount_last_month,
-                                                same_categoryid_last_week,
-                                                same_categoryid_last_month])
+                                         num_of_incomes_last_month] + categories)
+
     additional_features_df = pd.DataFrame(additional_features_data, columns=[TOTAL_INCOMES_LAST_WEEK,
                                                                              NUM_OF_INCOMES_LAST_WEEK,
                                                                              TOTAL_INCOMES_LAST_MONTH,
-                                                                             NUM_OF_INCOMES_LAST_MONTH])
-    features_for_subscription_label_df = pd.DataFrame(features_for_subscription_label, columns=[SAME_AMOUNT_LAST_WEEK,
-                                                                                                SAME_AMOUNT_LAST_MONTH,
-                                                                                                SAME_CATEGORY_ID_LAST_WEEK,
-                                                                                                SAME_CATEGORY_ID_LAST_MONTH])
+                                                                             NUM_OF_INCOMES_LAST_MONTH] + all_categories)
+    all_data_df = pd.concat([data_df, additional_features_df], axis=1)
 
-    # Calculate Subscription target values:
-    all_data_df = pd.concat([transactions_df, additional_features_df], axis=1)
-    all_data_df[SUBSCRIPTION] = \
-        (features_for_subscription_label_df[SAME_AMOUNT_LAST_WEEK] & features_for_subscription_label_df[SAME_CATEGORY_ID_LAST_WEEK]) | \
-        (features_for_subscription_label_df[SAME_AMOUNT_LAST_MONTH] & features_for_subscription_label_df[SAME_CATEGORY_ID_LAST_MONTH])
-    # Calculate Income target values:
-    user_weekly_income = all_data_df[all_data_df[INCOME]][[USER_ID, WORK_WEEK, AMOUNT]].groupby(by=[USER_ID, WORK_WEEK], as_index=False).sum()
-    user_weekly_income.rename(columns={AMOUNT: WEEKLY_INCOME}, inplace=True)
-    user_weekly_income[WEEKLY_INCOME] = -user_weekly_income[WEEKLY_INCOME]
-    user_monthly_income = all_data_df[all_data_df[INCOME]][[USER_ID, MONTH, AMOUNT]].groupby(by=[USER_ID, MONTH], as_index=False).sum()
-    user_monthly_income.rename(columns={AMOUNT: MONTHLY_INCOME}, inplace=True)
-    user_monthly_income[MONTHLY_INCOME] = -user_monthly_income[MONTHLY_INCOME]
-    all_data_df = all_data_df.merge(user_weekly_income, on=[USER_ID, WORK_WEEK])
-    all_data_df = all_data_df.merge(user_monthly_income, on=[USER_ID, MONTH])
+    if fill_target_values:
+        # Calculate Subscription target values:
+        features_for_subscription_label_df = pd.DataFrame(features_for_subscription_label, columns=[SAME_AMOUNT_LAST_WEEK,
+                                                                                                    SAME_AMOUNT_LAST_MONTH,
+                                                                                                    SAME_CATEGORY_ID_LAST_WEEK,
+                                                                                                    SAME_CATEGORY_ID_LAST_MONTH])
+        all_data_df[SUBSCRIPTION] = \
+            (features_for_subscription_label_df[SAME_AMOUNT_LAST_WEEK] & features_for_subscription_label_df[SAME_CATEGORY_ID_LAST_WEEK]) | \
+            (features_for_subscription_label_df[SAME_AMOUNT_LAST_MONTH] & features_for_subscription_label_df[SAME_CATEGORY_ID_LAST_MONTH])
+        # Calculate Income target values:
+        user_weekly_income = all_data_df[all_data_df[INCOME]][[USER_ID, WORK_WEEK, AMOUNT]].groupby(by=[USER_ID, WORK_WEEK], as_index=False).sum()
+        user_weekly_income.rename(columns={AMOUNT: WEEKLY_INCOME}, inplace=True)
+        user_weekly_income[WEEKLY_INCOME] = -user_weekly_income[WEEKLY_INCOME]
+        user_monthly_income = all_data_df[all_data_df[INCOME]][[USER_ID, MONTH, AMOUNT]].groupby(by=[USER_ID, MONTH], as_index=False).sum()
+        user_monthly_income.rename(columns={AMOUNT: MONTHLY_INCOME}, inplace=True)
+        user_monthly_income[MONTHLY_INCOME] = -user_monthly_income[MONTHLY_INCOME]
+        all_data_df = all_data_df.merge(user_weekly_income, on=[USER_ID, WORK_WEEK])
+        all_data_df = all_data_df.merge(user_monthly_income, on=[USER_ID, MONTH])
 
     return all_data_df
 
@@ -301,11 +302,6 @@ def ready_transaction_to_model(data):
 
 if __name__ == '__main__':
     read_users_and_transactions_files("./users.json", "./transactions_clean.json")
-    all_data = part_a()
-    all_data.to_csv('data.csv', index=False)
-
-    # debug
-    all_data = pd.read_csv('data.csv')
     global all_categories
     all_categories = [u'Bicycles', u'Shops', u'Food and Drink', u'Restaurants', u'Car Service', u'Ride Share', u'Travel',
                       u'Airlines and Aviation Services', u'Coffee Shop', u'Gyms and Fitness Centers', u'Recreation', u'Deposit', u'Transfer',
@@ -313,6 +309,11 @@ if __name__ == '__main__':
                       u'Financial', u'Computers and Electronics', u'Video Games', u'Warehouses and Wholesale Stores', u'Debit', u'Digital Purchase',
                       u'Supermarkets and Groceries', u'Cable', u'Gas Stations', u'Department Stores', u'Bank Fees', u'Overdraft', u'Interest',
                       u'Interest Charged', u'Wire Transfer', 'subscription_cat', u'Personal Care', u'ATM', u'Withdrawal', u'Pharmacies']
+    all_data = part_a(transactions_df, fill_target_values=True)
+    all_data.to_csv('data.csv', index=False)
+
+    # debug
+    all_data = pd.read_csv('data.csv')
     # end debug
 
     part_b(all_data)
