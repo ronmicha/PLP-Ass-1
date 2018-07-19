@@ -3,18 +3,12 @@ import json
 import pickle
 import numpy as np
 import pandas as pd
-from difflib import SequenceMatcher
-from sklearn.svm import SVC, SVR
-from sklearn.naive_bayes import GaussianNB
-from pandas.tseries.offsets import MonthBegin
-from sklearn.linear_model import SGDClassifier, SGDRegressor
-from sklearn.neural_network import MLPClassifier, MLPRegressor
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
-from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.base import clone
-from sklearn.metrics import precision_score
+from difflib import SequenceMatcher
 from flask import Flask, request, jsonify
+from pandas.tseries.offsets import MonthBegin
+from sklearn.neural_network import MLPClassifier
+from sklearn.tree import DecisionTreeRegressor
 
 flask_app = Flask(__name__)
 
@@ -96,9 +90,6 @@ def part_a(data_df, fill_target_values=False):
     data_df[WORK_WEEK] = pd.to_datetime(data_df[DATE]).apply(lambda x: x.isocalendar()[1])
     data_df[MONTH] = pd.to_datetime(data_df[DATE]).apply(lambda x: x.month)
     data_df[DAY] = pd.to_datetime(data_df[DATE]).apply(lambda x: x.day)
-    # categories_df = data_df[CATEGORY].apply(
-    #     lambda x: pd.Series({k if k.lower() != 'subscription' else 'subscription_cat': 1 for v, k in enumerate(x)})).fillna(0)
-    # data_df = pd.concat([data_df, categories_df], axis=1)
     data_df[INCOME] = data_df[AMOUNT] < 0
     additional_features_data = []
     features_for_subscription_label = []
@@ -121,13 +112,6 @@ def part_a(data_df, fill_target_values=False):
         last_month_charge_same_category = not last_month_charge_same_category_df.empty
         last_week_same_name = not last_week_same_name_df.empty
         last_month_same_name = not last_month_same_name_df.empty
-        # ToDo delete this?
-        # last_week_charge_same_price_avg_amount = last_week_charge_same_price_df[AMOUNT].mean() if last_week_charge_same_price else 0
-        # last_month_charge_same_price_avg_amount = last_month_charge_same_price_df[AMOUNT].mean() if last_month_charge_same_price else 0
-        # # last_week_charge_same_category_avg_amount = last_week_charge_same_category_df[AMOUNT].mean()
-        # # last_month_charge_same_category_avg_amount = last_month_charge_same_category_df[AMOUNT].mean()
-        # # last_week_same_name_avg_amount = last_week_same_name_df[AMOUNT].mean()
-        # # last_month_same_name_avg_amount = last_month_same_name_df[AMOUNT].mean()
         # Income features:
         last_week_incomes = get_from_start_of_week_or_month(row, 7)
         last_month_incomes = get_from_start_of_week_or_month(row, 30)
@@ -249,61 +233,49 @@ def build_subscription_model(data_df):
     x_train, x_test = np.split(X, [int(0.8 * len(X.index))])
     y_train, y_test = np.split(Y, [int(0.8 * len(Y.index))])
 
-    classification_models = {
-        # "SVC": SVC(),
-        # "SGD": SGDClassifier(),
-        # "Naive Bayes": GaussianNB(),
-        "MLP": MLPClassifier()
-        # "Decision Tree": DecisionTreeClassifier()
-    }
+    # classification_models = {
+    #     "SVC": SVC(),
+    #     "SGD": SGDClassifier(),
+    #     "Naive Bayes": GaussianNB(),
+    #     "MLP": MLPClassifier()
+    #     "Decision Tree": DecisionTreeClassifier()
+    # }
 
-    # Todo choose a specific model and use it
-    for name, model in classification_models.items():
-        model.fit(x_train, y_train)
-        print "Precision for subscription using", name, precision_score(y_test, model.predict(x_test))
-        return model
+    model = MLPClassifier()
+    model.fit(x_train, y_train)
+    return model
 
 
 def build_income_models(data_df):
-    regression_models = {"SVR": SVR(),
-                         "SGD": SGDRegressor(),
-                         "MLP": MLPRegressor(),
-                         "Decision Tree": DecisionTreeRegressor(),
-                         "Random Forest": RandomForestRegressor(),
-                         "Gradient Boost": GradientBoostingRegressor()}
+    # regression_models = {"Decision Tree": DecisionTreeRegressor(),
+    #                      "SVR": SVR(),
+    #                      "SGD": SGDRegressor(),
+    #                      "MLP": MLPRegressor(),
+    #                      "Random Forest": RandomForestRegressor(),
+    #                      "Gradient Boost": GradientBoostingRegressor()}
+    model = DecisionTreeRegressor()
     user_models = {}
-    # ToDo choose a specific model and use it
-    for name, model in regression_models.items():
-        average_month_mse = 0
-        average_week_mse = 0
-        for user_id in data_df[USER_ID].unique():
-            user_models[user_id] = {}
-            user_df = data_df[(data_df[USER_ID] == user_id) & (data_df[INCOME])]
-            # Sort from beginning to end of month/week
-            X_month = user_df[monthly_income_prediction_features]
-            X_week = user_df[weekly_income_prediction_features]
-            Y_month = user_df[MONTHLY_INCOME]
-            Y_week = user_df[WEEKLY_INCOME]
-            x_train_month, x_test_month = np.split(X_month, [int(0.8 * len(X_month.index))])
-            x_train_week, x_test_week = np.split(X_week, [int(0.8 * len(X_week.index))])
-            y_month_train, y_month_test = np.split(Y_month, [int(0.8 * len(Y_month.index))])
-            y_week_train, y_week_test = np.split(Y_week, [int(0.8 * len(Y_week.index))])
+    for user_id in data_df[USER_ID].unique():
+        user_models[user_id] = {}
+        user_df = data_df[(data_df[USER_ID] == user_id) & (data_df[INCOME])]
+        # Sort from beginning to end of month/week
+        X_month = user_df[monthly_income_prediction_features]
+        X_week = user_df[weekly_income_prediction_features]
+        Y_month = user_df[MONTHLY_INCOME]
+        Y_week = user_df[WEEKLY_INCOME]
+        x_train_month, x_test_month = np.split(X_month, [int(0.8 * len(X_month.index))])
+        x_train_week, x_test_week = np.split(X_week, [int(0.8 * len(X_week.index))])
+        y_month_train, y_month_test = np.split(Y_month, [int(0.8 * len(Y_month.index))])
+        y_week_train, y_week_test = np.split(Y_week, [int(0.8 * len(Y_week.index))])
 
-            # Month
-            month_model = clone(model)
-            month_model.fit(x_train_month, y_month_train)
-            average_month_mse += mean_squared_error(y_month_test, month_model.predict(x_test_month)) ** 0.5
-            print "User ID:", user_id, "monthly using", name, "Mean Error:", mean_squared_error(y_month_test,
-                                                                                                month_model.predict(x_test_month)) ** 0.5
-            user_models[user_id]['monthly'] = month_model
-            # Week
-            week_model = clone(model)
-            week_model.fit(x_train_week, y_week_train)
-            average_week_mse += mean_squared_error(y_week_test, week_model.predict(x_test_week)) ** 0.5
-            print "User ID:", user_id, "weekly using", name, "Mean Error:", mean_squared_error(y_week_test, week_model.predict(x_test_week)) ** 0.5
-            user_models[user_id]['weekly'] = week_model
-        # print "Monthly avg MSE using", name, ":", average_month_mse / len(data_df[USER_ID].unique())
-        # print "Weekly avg MSE using", name, ":", average_week_mse / len(data_df[USER_ID].unique())
+        # Month
+        month_model = clone(model)
+        month_model.fit(x_train_month, y_month_train)
+        user_models[user_id]['monthly'] = month_model
+        # Week
+        week_model = clone(model)
+        week_model.fit(x_train_week, y_week_train)
+        user_models[user_id]['weekly'] = week_model
     return user_models
 
 
@@ -354,13 +326,13 @@ def ready_transaction_to_model(data):
 # endregion
 
 if __name__ == '__main__':
-    #     read_users_and_transactions_files("./users.json", "./transactions_clean.json")
-    #     all_data = part_a(transactions_df, fill_target_values=True)
-    #     all_data.to_csv('data.csv', index=False)
+    # read_users_and_transactions_files("./users.json", "./transactions_clean.json")
+    # all_data = part_a(transactions_df, fill_target_values=True)
+    # all_data.to_csv('data.csv', index=False)
 
     # debug
-    # all_data = pd.read_csv('data.csv')
+    all_data = pd.read_csv('data.csv')
     # end debug
 
-    # part_b(all_data)
-    part_c()
+    part_b(all_data)
+    # part_c()
