@@ -228,11 +228,6 @@ def part_b(data_df):
 
 
 def build_subscription_model(data_df):
-    X = data_df[subscription_prediction_features]
-    Y = data_df[SUBSCRIPTION]
-    x_train, x_test = np.split(X, [int(0.8 * len(X.index))])
-    y_train, y_test = np.split(Y, [int(0.8 * len(Y.index))])
-
     # classification_models = {
     #     "SVC": SVC(),
     #     "SGD": SGDClassifier(),
@@ -241,7 +236,11 @@ def build_subscription_model(data_df):
     #     "Decision Tree": DecisionTreeClassifier()
     # }
 
-    model = MLPClassifier()
+    X = data_df[subscription_prediction_features]
+    Y = data_df[SUBSCRIPTION]
+    x_train, x_test = np.split(X, [int(0.8 * len(X.index))])
+    y_train, y_test = np.split(Y, [int(0.8 * len(Y.index))])
+    model = MLPClassifier(max_iter=500)
     model.fit(x_train, y_train)
     return model
 
@@ -253,6 +252,7 @@ def build_income_models(data_df):
     #                      "MLP": MLPRegressor(),
     #                      "Random Forest": RandomForestRegressor(),
     #                      "Gradient Boost": GradientBoostingRegressor()}
+
     model = DecisionTreeRegressor()
     user_models = {}
     for user_id in data_df[USER_ID].unique():
@@ -331,8 +331,8 @@ if __name__ == '__main__':
     # all_data.to_csv('data.csv', index=False)
 
     # debug
-    all_data = pd.read_csv('data.csv')
+    # all_data = pd.read_csv('data.csv')
     # end debug
 
-    part_b(all_data)
-    # part_c()
+    # part_b(all_data)
+    part_c()
